@@ -50,9 +50,10 @@ def build_scheduler(
                 end_factor=1.0,
                 total_iters=warmup_epochs,
             )
+            t_max = max(1, total_epochs - warmup_epochs)
             cosine = CosineAnnealingLR(
                 optimizer,
-                T_max=total_epochs - warmup_epochs,
+                T_max=t_max,
                 eta_min=1e-6,
             )
             return SequentialLR(

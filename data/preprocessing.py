@@ -80,3 +80,17 @@ def get_cifar_transforms(split: str = "train") -> T.Compose:
             normalize,
         ])
     return T.Compose([T.ToTensor(), normalize])
+
+def build_transforms(dataset_name: str, image_size: int = 224):
+    """Compatibility wrapper for returning train and val transforms."""
+    train_transform = get_medical_transforms(
+        split="train",
+        image_size=image_size,
+        dataset_name=dataset_name,
+    )
+    val_transform = get_medical_transforms(
+        split="val",
+        image_size=image_size,
+        dataset_name=dataset_name,
+    )
+    return train_transform, val_transform

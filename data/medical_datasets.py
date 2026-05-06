@@ -341,14 +341,16 @@ def get_medical_dataloaders(
         sampler = build_sampler(strategy, train_ds.targets, cfg, seed)
         shuffle = False
 
+    num_workers = cfg.get("training", {}).get("num_workers", 4)
+
     train_loader = DataLoader(
         train_ds, batch_size=batch_size,
         sampler=sampler, shuffle=(sampler is None and shuffle),
-        num_workers=4, pin_memory=True, drop_last=True,
+        num_workers=num_workers, pin_memory=True, drop_last=True,
     )
     val_loader = DataLoader(
         val_ds, batch_size=batch_size * 2,
-        shuffle=False, num_workers=4, pin_memory=True,
+        shuffle=False, num_workers=num_workers, pin_memory=True,
     )
 
     return train_loader, val_loader, class_weights

@@ -17,8 +17,8 @@ dataset:
 # ── Medical dataset paths (set to your download location) ────────────────────
 medical:
   ham10000:
-    csv_path: ./data/raw/HAM10000/HAM10000_metadata.csv
-    img_dir:  ./data/raw/HAM10000/images
+    csv_path: ./datasets/HAM10000/HAM10000_metadata.csv
+    img_dir: ./datasets/HAM10000/images
   chestxray:
     root: ./data/raw/chest_xray
   retinal_oct:
@@ -100,3 +100,7 @@ logging:
 # ── Sweep ─────────────────────────────────────────────────────────────────────
 sweep:
   methods: [baseline, weighted_ce, focal, oversampling, etf, prototype]
+
+# ── Debug ─────────────────────────────────────────────────────────────────────
+debug:
+  enabled: false

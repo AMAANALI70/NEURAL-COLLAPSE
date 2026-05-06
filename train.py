@@ -85,11 +85,46 @@ def main() -> None:
         overrides.append(f"dataset.imbalance_ratio={args.ratio}")
 
     cfg    = load_config(config_path=args.config, overrides=overrides or None)
-    method = _METHOD_MAP.get(args.method, args.method)
+    
+    # ── Method ↔ Model Head Routing ───────────────────────────────────────────
+    head = cfg.get("model", {}).get("head", "linear")
+    raw_method = args.method
+    if raw_method == "baseline":
+        if head == "etf": raw_method = "etf"
+        elif head == "prototype": raw_method = "prototype"
+        elif head == "linear": raw_method = "baseline"
+    method = _METHOD_MAP.get(raw_method, raw_method)
+
     set_seed(args.seed)
 
     dataset_name = cfg["dataset"]["name"].lower()
+    
+    # ── Auto Num_Classes ──────────────────────────────────────────────────────
+    _CLASS_MAP = {"cifar10": 10, "ham10000": 7, "chestxray": 2, "retinal_oct": 4}
+    if dataset_name in _CLASS_MAP:
+        cfg["dataset"]["num_classes"] = _CLASS_MAP[dataset_name]
     num_classes  = cfg["dataset"]["num_classes"]
+
+    # ── Debug Mode Support ────────────────────────────────────────────────────
+    if cfg.get("debug", {}).get("enabled", False):
+        _logger.info("Debug mode enabled: using lightweight defaults.")
+        cfg.setdefault("tracking", {})["tensorboard"] = False
+        args.visualize = False
+        cfg.setdefault("training", {})["num_workers"] = min(cfg.get("training", {}).get("num_workers", 4), 0)
+
+    # ── Startup Validation ────────────────────────────────────────────────────
+    if num_classes <= 0:
+        raise ValueError(f"Invalid num_classes: {num_classes}")
+    
+    valid_heads = ["linear", "etf", "prototype"]
+    if head not in valid_heads:
+        raise ValueError(f"Invalid model.head: {head}. Must be one of {valid_heads}")
+        
+    schedule = cfg.get("training", {}).get("lr_schedule", "cosine")
+    valid_schedules = ["cosine", "step", "none"]
+    if schedule not in valid_schedules:
+        raise ValueError(f"Invalid lr_schedule: {schedule}. Must be one of {valid_schedules}")
+
     device       = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     imb_ratio    = args.ratio or 1
 
