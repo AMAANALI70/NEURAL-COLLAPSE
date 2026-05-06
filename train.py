@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -39,10 +40,16 @@ from visualization.feature_geometry import plot_cosine_heatmap, plot_pca
 from visualization.confusion_analysis import plot_confusion_matrix, plot_per_class_recall
 from utils.seed import set_seed
 from utils.logging_utils import get_logger
+from utils.device import get_best_device
 import torch
 import numpy as np
+import pandas as pd
+import yaml
+from utils.experiment_reporter import save_experiment_outputs
 
 _logger = get_logger("train")
+
+_start_time: float = 0.0
 
 _METHOD_MAP = {
     "weighted_loss": "weighted",
@@ -67,24 +74,33 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--ratio",   type=int, default=None,
                    help="Imbalance ratio (CIFAR-10 only)")
     p.add_argument("--seed",    type=int, default=42)
+    p.add_argument("--profile", default=None,
+                   choices=["apple_silicon", "cuda_gpu", "cpu_debug"],
+                   help="Hardware profile to load before config overrides")
     p.add_argument("--visualize", action="store_true",
                    help="Generate t-SNE, PCA, cosine heatmap, confusion plots after training")
     p.add_argument("--override", nargs="*", default=None, metavar="KEY=VALUE",
                    help="Dot-notation config overrides")
+    p.add_argument("--resume", default=None,
+                   help="Path to checkpoint to resume from (e.g. latest.pth)")
     return p.parse_args()
 
 
 def main() -> None:
+    global _start_time
+    _start_time = time.time()
     args = parse_args()
 
-    # ── Build overrides list ──────────────────────────────────────────────────
+    # ── Build overrides list ─────────────────────────────────────────────────────
     overrides = list(args.override or [])
     if args.dataset:
         overrides.append(f"dataset.name={args.dataset}")
     if args.ratio is not None:
         overrides.append(f"dataset.imbalance_ratio={args.ratio}")
 
-    cfg    = load_config(config_path=args.config, overrides=overrides or None)
+    cfg = load_config(config_path=args.config,
+                      overrides=overrides or None,
+                      profile=args.profile)
     
     # ── Method ↔ Model Head Routing ───────────────────────────────────────────
     head = cfg.get("model", {}).get("head", "linear")
@@ -125,18 +141,26 @@ def main() -> None:
     if schedule not in valid_schedules:
         raise ValueError(f"Invalid lr_schedule: {schedule}. Must be one of {valid_schedules}")
 
-    device       = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    imb_ratio    = args.ratio or 1
+    # ── Device ───────────────────────────────────────────────────────────────────
+    device, device_info = get_best_device(cfg)
+    # Adapt num_workers to the active backend
+    cfg.setdefault("training", {})["num_workers"] = device_info.recommended_workers(
+        cfg.get("training", {}).get("num_workers", 4)
+    )
+    # Store device_info in cfg so reporter can access it
+    cfg["_device_info"] = device_info.to_dict()
+    imb_ratio = args.ratio or 1
 
     _logger.info(f"Dataset={dataset_name}  Method={method}  Seed={args.seed}  Device={device}")
 
     # ── Data ──────────────────────────────────────────────────────────────────
     if dataset_name == "cifar10":
         train_loader, val_loader, class_weights = get_dataloaders(
-            cfg, imbalance_ratio=imb_ratio, method=method, seed=args.seed)
+            cfg, imbalance_ratio=imb_ratio, method=method, seed=args.seed, device=device)
         class_names = None
     else:
-        train_loader, val_loader, class_weights = get_medical_dataloaders(cfg, seed=args.seed)
+        train_loader, val_loader, class_weights = get_medical_dataloaders(
+            cfg, seed=args.seed, device=device)
         class_names = getattr(train_loader.dataset, "class_names", None)
 
     # ── Model + Trainer ───────────────────────────────────────────────────────
@@ -148,6 +172,8 @@ def main() -> None:
         class_weights=class_weights, cfg=cfg, method=method,
         seed=args.seed, device=device, run_tag=run_tag,
     )
+    if args.resume:
+        trainer.resume(args.resume)
     results = trainer.run()
 
     # ── Full medical evaluation ───────────────────────────────────────────────
@@ -172,6 +198,9 @@ def main() -> None:
     med = compute_medical_metrics(y_true, y_pred, y_prob,
                                   class_names=class_names, num_classes=num_classes)
 
+    # Inject y_true so reporter can do long-tail analysis
+    results["_y_true"] = y_true.tolist()
+
     # ── Console summary ───────────────────────────────────────────────────────
     print("\n" + "═"*60)
     print(f"  NC-MedAI Training Complete")
@@ -191,51 +220,75 @@ def main() -> None:
     print(f"  NC4 (NCC disagree): {nc.nc4:.6f}")
     print("═"*60 + "\n")
 
-    # ── Optional visualisations ───────────────────────────────────────────────
-    if args.visualize:
+    # ── Optional t-SNE / PCA / cosine heatmap ────────────────────────────────
+    if args.visualize and not cfg.get("analysis", {}).get("lightweight", False):
         vis_dir = str(Path(cfg["logging"]["results_dir"]) / run_tag)
         _logger.info("Generating visualisations …")
+        try:
+            plot_tsne(feats, labels, class_names=class_names,
+                      save_path=f"{vis_dir}/tsne.png",
+                      title=f"t-SNE — {method} on {dataset_name}")
+            plot_pca(feats, labels, class_names=class_names,
+                     save_path=f"{vis_dir}/pca.png",
+                     title=f"PCA — {method} on {dataset_name}")
+            plot_cosine_heatmap(feats, labels, num_classes, class_names=class_names,
+                                save_path=f"{vis_dir}/cosine_heatmap.png")
+            _logger.info(f"  Visualisations saved to {vis_dir}/")
+        except Exception as exc:
+            _logger.warning(f"Visualisation failed (non-fatal): {exc}")
 
-        plot_tsne(feats, labels, class_names=class_names,
-                  save_path=f"{vis_dir}/tsne.png",
-                  title=f"t-SNE — {method} on {dataset_name}")
-
-        plot_pca(feats, labels, class_names=class_names,
-                 save_path=f"{vis_dir}/pca.png",
-                 title=f"PCA — {method} on {dataset_name}")
-
-        plot_cosine_heatmap(feats, labels, num_classes, class_names=class_names,
-                            save_path=f"{vis_dir}/cosine_heatmap.png")
-
-        import numpy as _np
-        from sklearn.metrics import confusion_matrix as _cm
-        cm = _np.array(med["confusion_matrix"])
-        plot_confusion_matrix(cm, class_names=class_names,
-                              save_path=f"{vis_dir}/confusion_matrix.png")
-
-        plot_per_class_recall(med["sensitivity"],
-                              save_path=f"{vis_dir}/per_class_recall.png")
-        _logger.info(f"  Visualisations saved to {vis_dir}/")
-
-    # ── Save JSON summary ─────────────────────────────────────────────────────
-    out_dir = Path(cfg["logging"]["results_dir"])
+    # ── Centralized experiment output ─────────────────────────────────────────
+    total_time_s = time.time() - _start_time
+    out_dir = Path(cfg["logging"]["results_dir"]) / run_tag
     out_dir.mkdir(parents=True, exist_ok=True)
-    summary = {
-        "method":       method,
-        "dataset":      dataset_name,
-        "seed":         args.seed,
-        "best_val_acc": results["best_val_acc"],
-        "macro_f1":     med["macro_f1"],
-        "sensitivity":  med["mean_sensitivity"],
-        "specificity":  med["mean_specificity"],
-        "kappa":        med["kappa"],
-        "roc_auc":      med["roc_auc"],
-        "nc1": nc.nc1, "nc2": nc.nc2, "nc3": nc.nc3, "nc4": nc.nc4,
-    }
-    json_path = out_dir / f"{run_tag}_summary.json"
-    with open(json_path, "w") as f:
-        json.dump(summary, f, indent=2)
-    print(f"  Summary saved → {json_path}")
+
+    # config_snapshot.yaml
+    try:
+        with open(out_dir / "config_snapshot.yaml", "w") as f:
+            yaml.dump(cfg, f, default_flow_style=False)
+    except Exception as exc:
+        _logger.warning(f"config_snapshot.yaml save failed: {exc}")
+
+    # metrics.csv (final summary row)
+    try:
+        summary = {
+            "method": method, "dataset": dataset_name, "seed": args.seed,
+            "best_val_acc": results["best_val_acc"],
+            "macro_f1":     med["macro_f1"],
+            "sensitivity":  med["mean_sensitivity"],
+            "specificity":  med["mean_specificity"],
+            "kappa":        med["kappa"],
+            "roc_auc":      med["roc_auc"],
+            "nc1": nc.nc1, "nc2": nc.nc2, "nc3": nc.nc3, "nc4": nc.nc4,
+        }
+        with open(out_dir / "summary.json", "w") as f:
+            json.dump(summary, f, indent=2)
+        pd.DataFrame([summary]).to_csv(out_dir / "metrics.csv", index=False)
+    except Exception as exc:
+        _logger.warning(f"metrics.csv save failed: {exc}")
+
+    # nc_metrics.csv
+    try:
+        if results.get("nc_history"):
+            pd.DataFrame(results["nc_history"]).to_csv(
+                out_dir / "nc_metrics.csv", index=False)
+    except Exception as exc:
+        _logger.warning(f"nc_metrics.csv save failed: {exc}")
+
+    # All remaining rich artifacts via centralized reporter
+    save_experiment_outputs(
+        out_dir=out_dir,
+        run_tag=run_tag,
+        cfg=cfg,
+        results=results,
+        med=med,
+        nc=nc,
+        class_names=class_names,
+        total_time_s=total_time_s,
+        device=device,
+    )
+
+    print(f"  Results saved → {out_dir}")
 
 
 if __name__ == "__main__":

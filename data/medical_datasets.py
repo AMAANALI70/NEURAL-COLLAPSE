@@ -263,14 +263,16 @@ class RetinalOCTDataset(Dataset):
 def get_medical_dataloaders(
     cfg: dict,
     seed: int = 42,
+    device=None,
 ) -> Tuple[DataLoader, DataLoader, torch.Tensor]:
     """
     Build train / val DataLoaders for the medical dataset specified in cfg.
 
     Parameters
     ----------
-    cfg  : dict — full project config
-    seed : int
+    cfg    : dict          — full project config
+    seed   : int
+    device : torch.device  — used to set pin_memory correctly (CUDA only)
 
     Returns
     -------
@@ -342,15 +344,17 @@ def get_medical_dataloaders(
         shuffle = False
 
     num_workers = cfg.get("training", {}).get("num_workers", 4)
+    # pin_memory only benefits CUDA — avoids UserWarning on CPU/MPS
+    pin_mem = (device is not None and getattr(device, "type", "cpu") == "cuda")
 
     train_loader = DataLoader(
         train_ds, batch_size=batch_size,
         sampler=sampler, shuffle=(sampler is None and shuffle),
-        num_workers=num_workers, pin_memory=True, drop_last=True,
+        num_workers=num_workers, pin_memory=pin_mem, drop_last=True,
     )
     val_loader = DataLoader(
         val_ds, batch_size=batch_size * 2,
-        shuffle=False, num_workers=num_workers, pin_memory=True,
+        shuffle=False, num_workers=num_workers, pin_memory=pin_mem,
     )
 
     return train_loader, val_loader, class_weights

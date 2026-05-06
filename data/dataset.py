@@ -137,6 +137,7 @@ def get_dataloaders(
     imbalance_ratio: int = 1,
     method: str = "baseline",
     seed: int = 42,
+    device=None,
 ) -> Tuple[DataLoader, DataLoader, torch.Tensor]:
     """
     Build training and validation DataLoaders for CIFAR-10.
@@ -148,6 +149,7 @@ def get_dataloaders(
     method          : str   — 'baseline' | 'weighted' | 'focal' |
                                'oversampling' | 'etf'
     seed            : int   — random seed for sampler
+    device          : torch.device — used to set pin_memory correctly (CUDA only)
 
     Returns
     -------
@@ -157,7 +159,9 @@ def get_dataloaders(
     """
     root       = cfg["dataset"]["root"]
     batch_size = cfg["training"]["batch_size"]
-    num_workers = 4
+    num_workers = cfg.get("training", {}).get("num_workers", 4)
+    # pin_memory only benefits CUDA — avoids UserWarning on CPU/MPS
+    pin_mem = (device is not None and getattr(device, "type", "cpu") == "cuda")
 
     train_ds = ImbalancedCIFAR10(
         root=root,
@@ -167,7 +171,7 @@ def get_dataloaders(
     )
     val_ds = CIFAR10(root=root, train=False, transform=_val_transform(), download=True)
 
-    # ── Sampler for oversampling ──────────────────────────────────────────────
+    # ── Sampler for oversampling ────────────────────────────────────────────────────
     sampler = None
     if method == "oversampling":
         sample_weights = train_ds.class_weights[train_ds.targets]
@@ -184,7 +188,7 @@ def get_dataloaders(
         shuffle=(sampler is None),
         sampler=sampler,
         num_workers=num_workers,
-        pin_memory=True,
+        pin_memory=pin_mem,
         drop_last=True,
     )
     val_loader = DataLoader(
@@ -192,7 +196,7 @@ def get_dataloaders(
         batch_size=batch_size * 2,
         shuffle=False,
         num_workers=num_workers,
-        pin_memory=True,
+        pin_memory=pin_mem,
     )
 
     return train_loader, val_loader, train_ds.class_weights

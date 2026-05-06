@@ -23,6 +23,7 @@ from typing import Any, Dict, List
 import numpy as np
 import pandas as pd
 import torch
+from utils.device import get_best_device
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -97,7 +98,7 @@ def _sweep_axis(
     device: torch.device = None,
 ) -> pd.DataFrame:
     """Generic ablation sweep over a list of config override dicts."""
-    device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = device or get_best_device()[0]
     rows   = []
 
     for overrides in overrides_list:
@@ -202,7 +203,7 @@ if __name__ == "__main__":
     p.add_argument("--override", nargs="*", default=None)
     args = p.parse_args()
     cfg = load_config(config_path=args.config, overrides=args.override)
-    dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    dev = get_best_device()[0]
 
     if args.axis == "backbone" or args.axis == "all":
         run_backbone_ablation(cfg, device=dev)

@@ -40,6 +40,7 @@ model:
 training:
   epochs: 50
   batch_size: 32
+  num_workers: 4              # auto-adjusted by device backend (see utils/device.py)
   optimizer: SGD
   lr: 0.01
   momentum: 0.9
@@ -47,6 +48,7 @@ training:
   lr_schedule: cosine
   warmup_epochs: 3
   loss: focal                 # ce | weighted_ce | focal | supcon
+  mixed_precision: "auto"     # auto | off — CUDA→enabled, MPS/CPU→disabled
 
 # ── NC Regularization ─────────────────────────────────────────────────────────
 nc_regularization:
@@ -76,7 +78,16 @@ evaluation:
   compute_nc3: true
   compute_nc4: true
 
-# ── Visualization ─────────────────────────────────────────────────────────────
+# ── NC Tracking (overrides evaluation.track_nc_every_n_epochs when enabled) ──
+nc_tracking:
+  enabled: true
+  every_n_epochs: 1            # track NC1-NC4 every epoch
+
+# ── Analysis mode ─────────────────────────────────────────────────────────────
+analysis:
+  lightweight: false           # true = skip t-SNE/PCA, reduce NC freq on CPU
+
+# ── Visualization ────────────────────────────────────────────────────────────
 visualization:
   tsne_perplexity: 30
   tsne_n_iter: 1000
@@ -84,6 +95,7 @@ visualization:
   umap_min_dist: 0.1
   pca_components: 50          # reduce to this before t-SNE / UMAP
   save_embeddings: true
+  max_embed_samples: 5000     # cap samples fed to heavy visualizers (t-SNE/UMAP)
 
 # ── Experiment Tracking ───────────────────────────────────────────────────────
 tracking:
@@ -101,6 +113,12 @@ logging:
 sweep:
   methods: [baseline, weighted_ce, focal, oversampling, etf, prototype]
 
+# ── System / Hardware ───────────────────────────────────────────────────────────
+system:
+  force_device: null          # null = auto-detect; "cuda" | "mps" | "cpu" to override
+  adaptive_memory: false      # warn on oversized batches, cap visualizer samples
+
 # ── Debug ─────────────────────────────────────────────────────────────────────
 debug:
   enabled: false
+  fast_dev_batches: 0          # 0 = disabled; N = stop after N batches/epoch (smoke test)

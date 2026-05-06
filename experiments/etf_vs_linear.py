@@ -30,6 +30,7 @@ from typing import Dict, List
 import numpy as np
 import pandas as pd
 import torch
+from utils.device import get_best_device
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -69,7 +70,7 @@ def run_etf_vs_linear(
     DataFrame with per-head aggregated metrics
     """
     seeds     = seeds or cfg.get("seeds", [42])
-    device    = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device    = get_best_device()[0]
     save_dir  = Path(cfg["logging"]["results_dir"]) / "etf_vs_linear"
     save_dir.mkdir(parents=True, exist_ok=True)
     num_classes = cfg["dataset"]["num_classes"]

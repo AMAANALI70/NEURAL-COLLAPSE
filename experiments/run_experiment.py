@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any, Dict
 
 import torch
+from utils.device import get_best_device
 
 from config import load_config
 from data import get_dataloaders
@@ -44,7 +45,7 @@ def run_single_experiment(
     """
     set_seed(seed)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = get_best_device()[0]
     _logger.info(
         f"── Experiment | method={method} ratio={imbalance_ratio} "
         f"seed={seed} device={device} ──"

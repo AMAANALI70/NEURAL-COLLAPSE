@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import torch
+from utils.device import get_best_device
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -70,7 +71,7 @@ def run_nc_tracking(
     DataFrame with columns [epoch, nc1, nc2, nc3, nc4, val_acc]
     """
     set_seed(seed)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = get_best_device()[0]
 
     dataset_name = cfg["dataset"]["name"].lower()
     run_tag      = f"nc_track_{method}_r{imbalance_ratio}_s{seed}"

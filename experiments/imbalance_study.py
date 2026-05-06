@@ -16,6 +16,7 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 import torch
+from utils.device import get_best_device
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -55,7 +56,7 @@ def run_imbalance_study(
     """
     seeds  = seeds  or cfg.get("seeds", [42])
     ratios = ratios or cfg["dataset"].get("imbalance_ratios", [1, 5, 10, 20, 50, 100])
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = get_best_device()[0]
     num_classes  = cfg["dataset"]["num_classes"]
     dataset_name = cfg["dataset"]["name"].lower()
     save_dir     = Path(cfg["logging"]["results_dir"]) / "imbalance_study"

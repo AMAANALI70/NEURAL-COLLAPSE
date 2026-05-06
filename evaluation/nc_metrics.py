@@ -148,29 +148,49 @@ def compute_nc3(
     NC3: mean cosine distance between classifier weight vectors and class means.
 
     Measures how well W_c aligns with μ_c (NC3 = 0 ↔ perfect alignment).
-    Only applicable to models with a linear `fc` layer.
+    Handles both standard nn.Linear (weight shape C×D) and ETFClassifier
+    (weight shape D×C — prototype columns, not rows).
     """
     # Extract classifier weights
     fc = getattr(model, "fc", None)
     if fc is None or not hasattr(fc, "weight"):
         return float("nan")
 
-    W = fc.weight.data.detach()   # (C, D)  for standard nn.Linear
+    W = fc.weight.data.detach()   # nn.Linear → (C, D); ETFClassifier → (D, C)
+
+    # Normalise to (C, D) regardless of head type
+    if W.ndim != 2:
+        return float("nan")
+    rows, cols = W.shape
+    if rows == num_classes and cols != num_classes:
+        # Standard linear: (C, D) — use as-is
+        W_cd = W
+    elif cols == num_classes and rows != num_classes:
+        # ETF buffer: (D, C) — transpose to (C, D)
+        W_cd = W.T
+    else:
+        # Ambiguous or square — cannot determine orientation
+        return float("nan")
 
     class_means, global_mean, counts = _class_means(features, labels, num_classes)
     active = [c for c in range(num_classes) if counts[c] > 0]
     if len(active) < 1:
         return float("nan")
 
-    W_norm = F.normalize(W[active], dim=1)            # (C_eff, D)
-    M_norm = F.normalize(class_means[active], dim=1)  # (C_eff, D)
+    try:
+        W_norm = F.normalize(W_cd[active], dim=1)         # (C_eff, D)
+        M_norm = F.normalize(class_means[active], dim=1)  # (C_eff, D)
 
-    # Cosine similarity between each W_c and μ_c
-    cos_diag = (W_norm * M_norm).sum(dim=1)           # (C_eff,)
+        if W_norm.shape != M_norm.shape:
+            return float("nan")
 
-    # NC3 = mean deviation from perfect alignment (cos=1)
-    nc3 = (1.0 - cos_diag).mean().item()
-    return nc3
+        # Cosine similarity between each W_c and μ_c
+        cos_diag = (W_norm * M_norm).sum(dim=1)           # (C_eff,)
+        # NC3 = mean deviation from perfect alignment (cos=1)
+        nc3 = (1.0 - cos_diag).mean().item()
+        return nc3
+    except Exception:
+        return float("nan")
 
 
 def compute_nc4(

@@ -153,13 +153,14 @@ def main() -> None:
     # ── Phase: Ablation studies ───────────────────────────────────────────────
     elif args.phase == "ablation":
         import torch
+        from utils.device import get_best_device
         from experiments.ablation_studies import (
             run_backbone_ablation,
             run_nc_reg_ablation,
             run_etf_scale_ablation,
             run_sampling_ablation,
         )
-        dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        dev, _ = get_best_device(cfg)
         seeds = cfg.get("seeds", [42])
 
         _logger.info(f"── Phase: Ablation | axis={args.axis} ──")
