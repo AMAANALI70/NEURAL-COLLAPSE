@@ -50,19 +50,78 @@ HAM_LABEL_MAP: Dict[str, int] = {
 HAM_CLASS_NAMES = ["Melanoma", "Nevi", "BCC", "AK", "BKL", "DF", "Vascular"]
 
 
+def _apply_long_tail_subsampling(
+    df: "pd.DataFrame",
+    imbalance_ratio: float,
+    seed: int,
+) -> "pd.DataFrame":
+    """
+    Subsample *df* (training split only) to create a long-tail class distribution.
+
+    The majority class (highest count) keeps ALL its samples.
+    Every other class is reduced so that:
+        n_minority = max(1, floor(n_majority / imbalance_ratio))
+
+    Parameters
+    ----------
+    df              : DataFrame with a 'label' column
+    imbalance_ratio : float — majority_count / minority_target_count
+    seed            : int   — for reproducibility (same seed as dataset split)
+
+    Returns
+    -------
+    Subsampled DataFrame, index reset.
+    """
+    import math
+
+    rng           = np.random.default_rng(seed)
+    counts        = df["label"].value_counts()
+    majority_cls  = int(counts.idxmax())
+    n_majority    = int(counts.max())
+    n_minority    = max(1, math.floor(n_majority / imbalance_ratio))
+
+    print(f"  [HAM10000] Applying imbalance_ratio={imbalance_ratio:.1f}")
+    print(f"  [HAM10000] Majority class {majority_cls} ('{HAM_CLASS_NAMES[majority_cls]}'): "
+          f"{n_majority} samples (unchanged)")
+    print(f"  [HAM10000] Target minority size: {n_minority} samples/class")
+
+    kept = []
+    for cls, group in df.groupby("label"):
+        if int(cls) == majority_cls or len(group) <= n_minority:
+            kept.append(group)
+        else:
+            sampled = group.sample(n=n_minority,
+                                   replace=False,
+                                   random_state=int(rng.integers(0, 2**31)))
+            kept.append(sampled)
+
+    result = pd.concat(kept).reset_index(drop=True)
+
+    # Log the resulting distribution
+    final_counts = result["label"].value_counts().sort_index()
+    print("  [HAM10000] Post-subsampling distribution:")
+    for cls_idx, cnt in final_counts.items():
+        print(f"    Class {cls_idx} ({HAM_CLASS_NAMES[int(cls_idx)]}): {cnt}")
+
+    return result
+
+
 class HAM10000Dataset(Dataset):
     """
     HAM10000 Skin Lesion Dataset.
 
     Parameters
     ----------
-    csv_path  : str — path to HAM10000_metadata.csv
-    img_dir   : str — directory containing JPEG images
-    split     : 'train' | 'val' | 'test'
-    transform : callable
-    val_frac  : float — fraction held out for validation (default 0.15)
-    test_frac : float — fraction held out for test       (default 0.10)
-    seed      : int
+    csv_path        : str   — path to HAM10000_metadata.csv
+    img_dir         : str   — directory containing JPEG images
+    split           : 'train' | 'val' | 'test'
+    transform       : callable
+    val_frac        : float — fraction held out for validation (default 0.15)
+    test_frac       : float — fraction held out for test       (default 0.10)
+    seed            : int
+    imbalance_ratio : float — majority:minority ratio for long-tail subsampling.
+                              Only applied when split=='train' AND ratio > 1.0.
+                              Default 1.0 = full natural distribution (no change).
     """
 
     def __init__(
@@ -74,6 +133,7 @@ class HAM10000Dataset(Dataset):
         val_frac: float = 0.15,
         test_frac: float = 0.10,
         seed: int = 42,
+        imbalance_ratio: float = 1.0,
     ) -> None:
         super().__init__()
         self.img_dir   = Path(img_dir)
@@ -84,7 +144,7 @@ class HAM10000Dataset(Dataset):
         df = df.dropna(subset=["label"])
         df["label"] = df["label"].astype(int)
 
-        # Stratified split
+        # ── Stratified split ──────────────────────────────────────────────────
         rng = np.random.default_rng(seed)
         df  = df.sample(frac=1, random_state=seed).reset_index(drop=True)
         n   = len(df)
@@ -95,13 +155,20 @@ class HAM10000Dataset(Dataset):
             df = df.iloc[:n_test]
         elif split == "val":
             df = df.iloc[n_test: n_test + n_val]
-        else:
+        else:   # train
             df = df.iloc[n_test + n_val:]
+
+        # ── Optional long-tail subsampling (train split only) ─────────────────
+        if split == "train" and imbalance_ratio > 1.0:
+            df = _apply_long_tail_subsampling(df, imbalance_ratio, seed)
+        elif split != "train" and imbalance_ratio > 1.0:
+            pass   # val/test never touched — intentional
 
         self.df          = df.reset_index(drop=True)
         self.targets     = self.df["label"].tolist()
         self.class_names = HAM_CLASS_NAMES
 
+        # ── Recompute class weights from the (possibly subsampled) distribution
         counts = np.bincount(self.targets, minlength=len(HAM_LABEL_MAP)).astype(float)
         freq   = counts / counts.sum()
         self.class_weights = torch.tensor(1.0 / (freq + 1e-8), dtype=torch.float32)
@@ -289,15 +356,18 @@ def get_medical_dataloaders(
 
     # ── Instantiate datasets ──────────────────────────────────────────────────
     if dataset_name == "ham10000":
+        imb_ratio = float(cfg.get("dataset", {}).get("imbalance_ratio", 1.0))
         train_ds = HAM10000Dataset(
             csv_path=med_cfg["ham10000"]["csv_path"],
             img_dir=med_cfg["ham10000"]["img_dir"],
             split="train", transform=train_tf, seed=seed,
+            imbalance_ratio=imb_ratio,          # only applied to train split
         )
         val_ds = HAM10000Dataset(
             csv_path=med_cfg["ham10000"]["csv_path"],
             img_dir=med_cfg["ham10000"]["img_dir"],
             split="val", transform=val_tf, seed=seed,
+            # imbalance_ratio intentionally omitted — val always uses full distribution
         )
 
     elif dataset_name == "chestxray":
