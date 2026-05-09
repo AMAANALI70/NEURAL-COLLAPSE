@@ -310,6 +310,8 @@ class Trainer:
         acc_m  = AverageMeter("Acc")
         n_samples = 0
         t_start   = time.time()
+        n_batches = len(self.train_loader) if self.fast_dev_batches == 0 else min(
+            self.fast_dev_batches, len(self.train_loader))
 
         for batch_idx, (images, labels) in enumerate(self.train_loader):
             if self.fast_dev_batches > 0 and batch_idx >= self.fast_dev_batches:
@@ -348,6 +350,17 @@ class Trainer:
             loss_m.update(loss.item(), bs)
             acc_m.update(acc, bs)
             n_samples += bs
+
+            # Heartbeat: print every 50 batches so log file shows live progress.
+            # Critical for subprocess runs where silence looks like a hang.
+            if (batch_idx + 1) % 50 == 0:
+                elapsed_so_far = time.time() - t_start
+                print(
+                    f"    [ep {epoch}] batch {batch_idx+1}/{n_batches}"
+                    f"  loss={loss_m.avg:.4f}  acc={acc_m.avg:.1f}%"
+                    f"  {elapsed_so_far:.0f}s",
+                    flush=True,
+                )
 
         elapsed = max(time.time() - t_start, 1e-6)
         return loss_m.avg, acc_m.avg, n_samples / elapsed   # loss, acc, samples/sec

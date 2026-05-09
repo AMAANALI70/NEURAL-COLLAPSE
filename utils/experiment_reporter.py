@@ -249,6 +249,7 @@ def _save_run_info(
         "batch_size":       cfg.get("training", {}).get("batch_size"),
         "lr":               cfg.get("training", {}).get("lr"),
         "num_classes":      cfg.get("dataset", {}).get("num_classes"),
+        "imbalance_ratio":  cfg.get("dataset", {}).get("imbalance_ratio", 1),
         "mixed_precision":  cfg.get("training", {}).get("mixed_precision", "auto"),
     }
 
@@ -390,7 +391,7 @@ def _update_registry(
 
     fieldnames = [
         "experiment_id", "timestamp", "dataset", "method", "backbone",
-        "epochs", "best_val_acc", "macro_f1", "kappa", "roc_auc",
+        "imbalance_ratio", "epochs", "best_val_acc", "macro_f1", "kappa", "roc_auc",
         "nc1", "nc2", "nc3", "nc4", "total_time_s", "checkpoint_dir",
     ]
     row = {
@@ -399,6 +400,7 @@ def _update_registry(
         "dataset":       cfg.get("dataset", {}).get("name"),
         "method":        cfg.get("model", {}).get("head"),
         "backbone":      cfg.get("model", {}).get("backbone"),
+        "imbalance_ratio": cfg.get("dataset", {}).get("imbalance_ratio", 1),
         "epochs":        cfg.get("training", {}).get("epochs"),
         "best_val_acc":  round(results.get("best_val_acc", 0), 4),
         "macro_f1":      round(med.get("macro_f1", float("nan")), 4),

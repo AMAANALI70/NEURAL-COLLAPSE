@@ -111,7 +111,16 @@ def main() -> None:
         elif head == "linear": raw_method = "baseline"
     method = _METHOD_MAP.get(raw_method, raw_method)
 
-    set_seed(args.seed)
+    # ── Resolve effective seed ────────────────────────────────────────────────
+    # Priority: --override seed=N (lands in cfg["seed"]) > --seed N (args.seed)
+    # This ensures `python train.py --override seed=7` works identically to
+    # `python train.py --seed 7`.
+    seed = int(cfg.get("seed", args.seed))
+    if seed != args.seed:
+        # Keep cfg consistent so downstream modules that read cfg["seed"] agree
+        cfg["seed"] = seed
+
+    set_seed(seed)
 
     dataset_name = cfg["dataset"]["name"].lower()
     
@@ -149,28 +158,42 @@ def main() -> None:
     )
     # Store device_info in cfg so reporter can access it
     cfg["_device_info"] = device_info.to_dict()
-    imb_ratio = args.ratio or 1
 
-    _logger.info(f"Dataset={dataset_name}  Method={method}  Seed={args.seed}  Device={device}")
+    # ── Resolve imbalance ratio ────────────────────────────────────────────────
+    # Priority: --ratio N (args.ratio) > --override dataset.imbalance_ratio=N > default 1
+    imb_ratio = int(
+        args.ratio
+        if args.ratio is not None
+        else cfg.get("dataset", {}).get("imbalance_ratio", 1)
+    )
+    # Keep cfg["dataset"]["imbalance_ratio"] consistent for DataLoaders + reporter
+    cfg.setdefault("dataset", {})["imbalance_ratio"] = imb_ratio
+    cfg["_imbalance_ratio"] = imb_ratio   # quick-access for run_tag
+
+    _logger.info(f"Dataset={dataset_name}  Method={method}  Seed={seed}  "
+                 f"Ratio={imb_ratio}  Device={device}")
 
     # ── Data ──────────────────────────────────────────────────────────────────
     if dataset_name == "cifar10":
         train_loader, val_loader, class_weights = get_dataloaders(
-            cfg, imbalance_ratio=imb_ratio, method=method, seed=args.seed, device=device)
+            cfg, imbalance_ratio=imb_ratio, method=method, seed=seed, device=device)
         class_names = None
     else:
         train_loader, val_loader, class_weights = get_medical_dataloaders(
-            cfg, seed=args.seed, device=device)
+            cfg, seed=seed, device=device)
         class_names = getattr(train_loader.dataset, "class_names", None)
 
     # ── Model + Trainer ───────────────────────────────────────────────────────
     model   = build_model(cfg, method=method)
-    run_tag = f"{method}_{dataset_name}_s{args.seed}"
+    # ── Run tag: always include ratio to prevent directory collisions ───────────
+    # Format: {method}_{dataset}_r{ratio}_s{seed}
+    # Backward compat: ratio=1 is still included explicitly to make collisions impossible.
+    run_tag = f"{method}_{dataset_name}_r{imb_ratio}_s{seed}"
 
     trainer = Trainer(
         model=model, train_loader=train_loader, val_loader=val_loader,
         class_weights=class_weights, cfg=cfg, method=method,
-        seed=args.seed, device=device, run_tag=run_tag,
+        seed=seed, device=device, run_tag=run_tag,
     )
     if args.resume:
         trainer.resume(args.resume)
@@ -205,7 +228,7 @@ def main() -> None:
     print("\n" + "═"*60)
     print(f"  NC-MedAI Training Complete")
     print(f"  Dataset : {dataset_name}   Method : {method}")
-    print(f"  Seed    : {args.seed}      Device : {device}")
+    print(f"  Seed    : {seed}      Device : {device}")
     print("─"*60)
     print(f"  Best Val Accuracy : {results['best_val_acc']:.2f}%")
     print(f"  Macro F1          : {med['macro_f1']:.4f}")
@@ -252,7 +275,7 @@ def main() -> None:
     # metrics.csv (final summary row)
     try:
         summary = {
-            "method": method, "dataset": dataset_name, "seed": args.seed,
+            "method": method, "dataset": dataset_name, "seed": seed,
             "best_val_acc": results["best_val_acc"],
             "macro_f1":     med["macro_f1"],
             "sensitivity":  med["mean_sensitivity"],

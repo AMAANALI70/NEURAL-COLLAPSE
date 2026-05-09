@@ -75,13 +75,15 @@ def run_imbalance_study(
                 train_loader, val_loader, cw = get_dataloaders(
                     cfg, imbalance_ratio=ratio, method=method, seed=seed)
             else:
-                # For medical datasets, pass ratio as artificial sub-sampling override
-                cfg_copy = dict(cfg)
+                # Pass ratio through cfg so HAM10000Dataset._apply_long_tail_subsampling runs
+                import copy as _copy
+                cfg_copy = _copy.deepcopy(cfg)
+                cfg_copy.setdefault("dataset", {})["imbalance_ratio"] = ratio
                 train_loader, val_loader, cw = get_medical_dataloaders(cfg_copy, seed=seed)
 
             # Model + Trainer
             model   = build_model(cfg, method=method)
-            run_tag = f"imbstudy_{method}_r{ratio}_s{seed}"
+            run_tag = f"imbstudy_{method}_{dataset_name}_r{ratio}_s{seed}"
             trainer = Trainer(
                 model=model, train_loader=train_loader, val_loader=val_loader,
                 class_weights=cw, cfg=cfg, method=method,
