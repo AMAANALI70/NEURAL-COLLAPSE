@@ -47,7 +47,7 @@ def _set_nested(d: dict, keys: List[str], value: Any) -> None:
             raw = True
         elif raw.lower() == "false":
             raw = False
-        elif raw.lower() == "null" or raw.lower() == "none":
+        elif raw.lower() == "null":
             raw = None
         else:
             try:

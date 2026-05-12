@@ -185,6 +185,9 @@ def run_single(
             # fast_dev_batches=0 means full dataset; >0 limits train batches
             # (val set has 24 batches, so fast_dev_batches=75 leaves it fully intact)
             f"debug.fast_dev_batches={fast_dev_batches}",
+            # Phase-1 = clean comparison: no NC regularization on either method.
+            # NC-reg is a Phase-2 intervention and must NOT be on by default.
+            "nc_regularization.enabled=false",
     ]
 
     print(f"\n  CMD: {' '.join(cmd)}")

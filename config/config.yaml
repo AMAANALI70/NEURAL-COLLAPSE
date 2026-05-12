@@ -51,8 +51,11 @@ training:
   mixed_precision: "auto"     # auto | off — CUDA→enabled, MPS/CPU→disabled
 
 # ── NC Regularization ─────────────────────────────────────────────────────────
+# IMPORTANT: Keep disabled by default. Only enable explicitly as a Phase-2
+# intervention via --override nc_regularization.enabled=true.
+# When enabled in baseline or etf runs without intent, it contaminates comparisons.
 nc_regularization:
-  enabled: true
+  enabled: false
   collapse_weight: 0.01       # λ for within-class collapse penalty (NC1)
   etf_align_weight: 0.01      # λ for ETF alignment penalty (NC2)
 
@@ -99,7 +102,7 @@ visualization:
 
 # ── Experiment Tracking ───────────────────────────────────────────────────────
 tracking:
-  tensorboard: true
+  tensorboard: false          # disabled by default — CPU runs don't need overhead
   log_dir: ./logs
 
 # ── Logging & Checkpointing ───────────────────────────────────────────────────

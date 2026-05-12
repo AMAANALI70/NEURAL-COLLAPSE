@@ -186,9 +186,13 @@ def main() -> None:
     # ── Model + Trainer ───────────────────────────────────────────────────────
     model   = build_model(cfg, method=method)
     # ── Run tag: always include ratio to prevent directory collisions ───────────
-    # Format: {method}_{dataset}_r{ratio}_s{seed}
-    # Backward compat: ratio=1 is still included explicitly to make collisions impossible.
+    # Default format: {method}_{dataset}_r{ratio}_s{seed}
+    # Callers (e.g. run_phase2_study.py) can inject logging.run_tag as a config
+    # override to use the full study-level key instead of the method-flag-based
+    # name. This prevents variants that share the same method flag (e.g.
+    # etf_nc_reg vs etf_nc_reg_balanced) from writing to the same directory.
     run_tag = f"{method}_{dataset_name}_r{imb_ratio}_s{seed}"
+    run_tag = cfg.get("logging", {}).get("run_tag", run_tag) or run_tag
 
     trainer = Trainer(
         model=model, train_loader=train_loader, val_loader=val_loader,

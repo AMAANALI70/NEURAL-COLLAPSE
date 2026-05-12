@@ -348,7 +348,8 @@ def get_medical_dataloaders(
     dataset_name = cfg["dataset"]["name"].lower()
     image_size   = cfg["dataset"].get("image_size", 224)
     batch_size   = cfg["training"]["batch_size"]
-    strategy     = cfg.get("sampling", {}).get("strategy", "weighted")
+    strategy     = cfg.get("sampling", {}).get("strategy", "weighted") or "none"
+
     med_cfg      = cfg.get("medical", {})
 
     train_tf = get_medical_transforms("train", image_size, dataset_name)
