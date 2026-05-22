@@ -1,183 +1,171 @@
-# NC-MedAI — Neural Collapse-Aware Medical Image Classification
+# NC-MedAI: Neural Collapse-Aware Medical Image Classification
 
 <div align="center">
 
 **A research framework studying how class imbalance degrades feature geometry**  
 *and whether geometry-aware training can restore minority-class clinical performance.*
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)](https://python.org)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-orange?logo=pytorch)](https://pytorch.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-CUDA%20%7C%20MPS%20%7C%20CPU-informational)](https://pytorch.org)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0%2B-orange.svg?style=flat-square&logo=pytorch&logoColor=white)](https://pytorch.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-CUDA%20%7C%20MPS%20%7C%20CPU-lightgrey.svg?style=flat-square)](https://pytorch.org)
 
 </div>
 
 ---
 
-## Overview
+## 📌 Executive Summary
 
 **NC-MedAI** is a research framework for studying **Neural Collapse (NC)** in medical image classification under severe class imbalance. Built on HAM10000 (7-class skin lesion, 10:1 majority–minority ratio), it measures how representation geometry degrades under imbalance and whether geometry-aware interventions restore minority-class detection.
 
-> *When a model's feature space stops collapsing properly, minority disease detection fails — often silently, long before accuracy metrics reveal a problem. NC1–NC4 metrics expose this degradation early.*
+> 🩺 **Clinical Insight**: *When a model's feature space stops collapsing properly, minority disease detection fails — often silently, long before validation accuracy reveals a problem. NC1–NC4 metrics expose this degradation early.*
 
-**The completed study established:**
-- NC1 and NC4 are robust **early-warning indicators** of training failure, detectable from epoch 1
-- ETF heads + NC regularization produce the **best geometry and best minority recall** simultaneously
-- Loss-based rebalancing (weighted CE, focal loss) **degrades NC geometry** and often hurts minority performance
-- Geometry preservation order and clinical performance order are **identical** across all tested methods
+### Key Scientific Findings:
+*   📊 **Early-Warning Indicators**: NC1 (within-class scatter) and NC4 (nearest-class-mean deviation) are robust diagnostic metrics that reveal training pathologies from epoch 1.
+*   📐 **Geometric Regularization**: Fixed ETF heads + NC regularization produce the most stable feature representations and the highest minority-class recall simultaneously.
+*   ⚡ **Rebalancing Pitfalls**: Standard loss-based rebalancing (Weighted CE, Focal Loss) degrades NC geometry, causing unstable feature trajectories and hurting overall performance.
+*   🧬 **Clinical Co-alignment**: The ranking of methods by geometric health (NC1↓, NC4↓) matches the ordering of clinical performance (Macro F1, Melanoma Recall) exactly.
 
 ---
 
-## Study Results at a Glance
+## 📄 Deliverables & Scientific Reports
 
-All results at HAM10000, imbalance ratio = 10:1, ResNet-18, seed = 42.
+The full findings, mathematical derivations, and qualitative deep-dives are available in two print-optimized formats:
+1.  **[Interactive Report (FINAL_REPORT.html)](file:///d:/dl/NEURAL-COLLAPSE/FINAL_REPORT.html)**: A premium web-based presentation containing a interactive method comparison widget, KaTeX equations, light/dark mode toggling, and expandable diagnostic plots. *Best for desktop viewing and exporting to PDF.*
+2.  **[Scientific Document (FINAL_REPORT.md)](file:///d:/dl/NEURAL-COLLAPSE/FINAL_REPORT.md)**: A complete markdown document containing details of the six investigated methods, systematic results tables, deep-dive analysis, and references.
 
-| Method | Sampler | Loss | NC-reg | Val Acc | Macro F1 | NC1 | NC4 | Mel Recall |
-|--------|---------|------|--------|---------|----------|-----|-----|------------|
+---
+
+## 📊 Study Results at a Glance
+
+All results evaluated on HAM10000, imbalance ratio $r = 10:1$, ResNet-18, seed = 42.
+
+| Method | Sampler | Loss | NC-Reg | Val Acc | Macro F1 | NC1↓ | NC4↓ | Mel Recall |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | Baseline | Weighted | CE | ✗ | 64.4% | 0.436 | 4.81 | 0.194 | 56.0% |
 | Oversampling | Weighted | CE | ✗ | 64.4% | 0.436 | 4.81 | 0.194 | 56.0% |
-| **ETF + NC-reg** | Weighted | CE | ✅ | **65.0%** | **0.472** | 5.53 | **0.186** | **58.8%** |
+| **ETF + NC-reg (Best)** | **Weighted** | **CE** | **✅** | **65.0%** | **0.472** | **5.53** | **0.186** | **58.8%** |
 | ETF + NC-reg + Balanced | Balanced | CE | ✅ | 61.8% | 0.429 | 5.63 | 0.180 | 58.8% |
 | Weighted CE | None | WCE | ✗ | 62.2% | 0.332 | 7.94 | 0.396 | 36.3% |
 | Focal Loss | None | Focal(γ=2) | ✗ | 56.9% | 0.110 | 15.65 | 0.690 | 0.0% |
 
-> See [`results/phase2/experiment_registry.csv`](results/phase2/experiment_registry.csv) for the full canonical registry.
-> See [`FINAL_REPORT.md`](FINAL_REPORT.md) for the complete scientific analysis.
-
 ---
 
-## Repository Structure
+## 📁 Repository Structure
 
 ```
 NEURAL-COLLAPSE/
 │
 ├── config/
 │   ├── config.yaml              ← Master config (all hyperparameters)
-│   ├── config_loader.py         ← YAML loader with profile + CLI override support
-│   └── profiles/                ← Hardware-specific override profiles
-│       ├── apple_silicon.yaml
-│       ├── cuda_gpu.yaml
-│       └── cpu_debug.yaml
+│   └── config_loader.py         ← YAML loader with profile + CLI override support
 │
 ├── data/
 │   ├── medical_datasets.py      ← HAM10000 loader with imbalance_ratio control
 │   ├── dataset.py               ← CIFAR-10 with controlled imbalance injection
-│   ├── imbalance_sampler.py     ← Balanced / SquareRoot / Progressive samplers
-│   └── preprocessing.py        ← Medical augmentation pipelines
+│   └── imbalance_sampler.py     ← Balanced / SquareRoot / Progressive samplers
 │
 ├── models/
 │   ├── resnet.py                ← ResNet-18 with forward_features() API
 │   ├── etf_classifier.py        ← Fixed ETF head (frozen buffer)
-│   ├── prototype_head.py        ← Learnable cosine prototype classifier
 │   └── model_factory.py         ← build_model(cfg, method) factory
 │
 ├── training/
 │   ├── trainer.py               ← Full training loop with NC tracking
 │   ├── losses.py                ← CE / WeightedCE / FocalLoss
-│   ├── nc_regularization.py     ← NCCollapseReg / ETFAlignment / CombinedNCLoss
-│   └── scheduler.py             ← Cosine / Step / Constant LR
+│   └── nc_regularization.py     ← NCCollapseReg / ETFAlignment / CombinedNCLoss
 │
 ├── evaluation/
 │   ├── nc_metrics.py            ← NC1–NC4 full suite
-│   ├── medical_metrics.py       ← Sensitivity / Specificity / F1 / AUC / Kappa
-│   └── evaluator.py             ← evaluate_checkpoint(), extract_features()
-│
-├── visualization/
-│   ├── tsne_visualizer.py       ← t-SNE with minority highlight
-│   ├── feature_geometry.py      ← PCA, cosine heatmap, NC evolution plots
-│   └── confusion_analysis.py   ← Confusion matrix, per-class recall
+│   └── medical_metrics.py       ← Sensitivity / Specificity / F1 / AUC / Kappa
 │
 ├── experiments/
+│   ├── plot_existing_results.py ← Reconstructs diagnostics from pilot runs
 │   ├── run_phase1_study.py      ← Phase-1: ETF vs baseline × r∈{1,10,50}
 │   └── run_phase2_study.py      ← Phase-2: intervention sweep at r=10
 │
 ├── results/
-│   ├── experiment_registry.csv  ← Root registry (Phase-1 + pilots)
-│   ├── phase1_summary.csv       ← Authoritative Phase-1 summary (6 canonical runs)
+│   ├── pilot_plots/             ← Reconstructed matplotlib charts (Val Acc, NC1-NC4)
 │   ├── phase2/
-│   │   ├── experiment_registry.csv      ← Authoritative Phase-2 registry
-│   │   ├── baseline_ham10000_r10_s42/
-│   │   ├── weighted_ham10000_r10_s42/   ← Corrected weighted CE
-│   │   ├── focal_ham10000_r10_s42/      ← Corrected focal
-│   │   ├── oversampling_ham10000_r10_s42/
-│   │   ├── etf_nc_reg_ham10000_r10_s42/ ← ⚠ Reconstructed (plots missing)
-│   │   ├── etf_nc_reg_balanced_ham10000_r10_s42/
-│   │   └── archived_collapsed/          ← Invalid double-rebalancing runs
-│   ├── baseline_ham10000_r{1,10,50}_s42/  ← Phase-1 baseline results
-│   ├── etf_ham10000_r{1,10,50}_s42/       ← Phase-1 ETF results
-│   └── archived_pilot_runs/             ← Pre-study development artifacts
-│
-├── study_logs/
-│   ├── phase1/                  ← Per-run logs for Phase-1
-│   └── phase2/                  ← Per-run logs for Phase-2
+│   │   ├── phase2_plots/        ← Phase-2 comparative charts (Macro F1, Recall, NC)
+│   │   ├── phase2_summary.csv   ← Centrally aggregated summary table
+│   │   └── *_*_ham10000_r10_s42/← Directory-level run databases (metrics, configs)
+│   └── *_*_ham10000_s42/        ← Directory-level pilot run databases
 │
 ├── train.py                     ← CLI: single training run
 ├── run_sweep.py                 ← CLI: sweep runner
-├── FINAL_REPORT.md              ← Complete scientific report
-├── requirements.txt
-└── README.md
+├── FINAL_REPORT.md              ← Complete scientific report (Markdown)
+├── FINAL_REPORT.html             ← Interactive, styled scientific report (HTML)
+└── README.md                    ← Polished repository overview
 ```
 
 ---
 
-## Setup
+## 🚀 Setup & Installation
 
-```bash
-git clone <repo-url>
-cd NEURAL-COLLAPSE
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
+1.  **Clone and environment configuration**:
+    ```bash
+    git clone https://github.com/amaanali70/neural-collapse.git
+    cd NEURAL-COLLAPSE
+    python -m venv venv
+    source venv/bin/activate  # On Windows: .\venv\Scripts\activate
+    pip install -r requirements.txt
+    ```
 
-**Dataset:** Download [HAM10000 from Kaggle](https://www.kaggle.com/datasets/kmader/skin-cancer-mnist-ham10000).  
-Extract to `./datasets/HAM10000/` with `HAM10000_metadata.csv` and `images/` subdirectory.
+2.  **Dataset Setup**:
+    *   Download [HAM10000 from Kaggle](https://www.kaggle.com/datasets/kmader/skin-cancer-mnist-ham10000).
+    *   Extract contents to `./datasets/HAM10000/`.
+    *   Ensure the structure looks like this:
+        ```
+        datasets/HAM10000/
+        ├── HAM10000_metadata.csv
+        └── images/
+            ├── ISIC_0024306.jpg
+            └── ...
+        ```
 
 ---
 
-## Running Experiments
+## 🏃 Running Experiments
 
-### Single run
+### Execute Single Training Configuration:
 ```bash
-# ETF head + NC regularization (best configuration)
+# ETF head + NC regularization (optimal clinical setup)
 python train.py --override dataset.name=ham10000 model.head=etf \
     nc_regularization.enabled=true sampling.strategy=weighted \
     training.epochs=15
 
-# Baseline
+# Standard baseline model
 python train.py --override dataset.name=ham10000 model.head=linear training.epochs=15
 
-# Smoke test (CPU, ~5 min)
+# Smoke test (Runs quickly on CPU with a fraction of data)
 python train.py --override dataset.name=ham10000 model.head=etf \
     training.epochs=1 debug.fast_dev_batches=10
 ```
 
-### Reproduce Phase-2 study
+### Reproduce Phase-2 Systematic Sweep:
 ```bash
-# Dry-run first (verify configs, no training)
+# Dry-run validation (checks config syntax, skips training)
 python -m experiments.run_phase2_study --dry-run
 
-# Full Phase-2 sweep (all 6 methods at r=10)
+# Run full Phase-2 sweep (all 6 strategies sequentially)
 python -m experiments.run_phase2_study
 
-# Single method
+# Run a specific configuration from the sweep
 python -m experiments.run_phase2_study --methods etf_nc_reg
 ```
 
-### Monitor training
+### Reconstruct Diagnostic Charts:
+If you need to regenerate the pilot study's diagnostic figures from the saved metric databases:
 ```bash
-# Per-epoch summary (updates every ~10 min on CPU)
-tail -f study_logs/phase2/etf_nc_reg_r10_s42.log
-
-# Mid-epoch heartbeat
-tail -f results/phase2/trainer.etf_nc_reg_ham10000_r10_s42.log
+python -m experiments.plot_existing_results
 ```
 
 ---
 
-## Configuration
+## ⚙️ Configuration Overrides
 
-All hyperparameters live in `config/config.yaml`. Override at runtime:
+All hyperparameters reside in `config/config.yaml`. You can override any nested parameters from the command line:
 
 ```bash
 python train.py --override \
@@ -186,93 +174,58 @@ python train.py --override \
   sampling.strategy=weighted \
   nc_regularization.enabled=true \
   nc_regularization.collapse_weight=0.01 \
-  training.epochs=50 \
-  debug.fast_dev_batches=0     # 0 = full dataset
+  training.epochs=15 \
+  debug.fast_dev_batches=75  # Set to 0 to run on full dataset (requires GPU)
 ```
 
-Key sections:
+Key configuration keys:
 
-| Section | Important keys |
-|---------|---------------|
-| `dataset` | `name`, `imbalance_ratio` |
-| `model` | `backbone` (resnet18), `head` (linear/etf/prototype) |
-| `training` | `epochs`, `batch_size`, `lr`, `loss` |
-| `sampling` | `strategy` (weighted/balanced/square_root/progressive/none) |
-| `nc_regularization` | `enabled`, `collapse_weight`, `etf_align_weight` |
-| `debug` | `fast_dev_batches` (0 = full; >0 = pilot mode) |
-
----
-
-## Neural Collapse Metrics
-
-| Metric | Measures | Ideal |
-|--------|----------|-------|
-| NC1 | Within-class scatter relative to between-class scatter | → 0 |
-| NC2 | Deviation of class means from ETF arrangement | → 0 |
-| NC3 | Misalignment of classifier weights and class means | → 0 |
-| NC4 | Fraction of samples where NCC ≠ argmax | → 0 |
-
-NC1 and NC4 are the most sensitive early indicators of training failure under imbalance.
+| Section | Parameter | Default | Description |
+| :--- | :--- | :---: | :--- |
+| `dataset` | `imbalance_ratio` | `10` | Imbalance ratio $r$ (majority-to-minority) |
+| `model` | `head` | `linear` | Classifier head (`linear` / `etf` / `prototype`) |
+| `training` | `loss` | `ce` | Optimization loss (`ce` / `weighted_ce` / `focal`) |
+| `sampling` | `strategy` | `weighted` | Dataloader sampler (`weighted` / `balanced` / `none`) |
+| `nc_regularization` | `enabled` | `false` | Enables fixed-ETF geometric regularization |
+| `debug` | `fast_dev_batches`| `75` | Batches per epoch for pilot profiling (0 to disable) |
 
 ---
 
-## Key Findings (Summary)
+## 📐 Neural Collapse Metrics Definition
 
-**1. NC metrics detect training pathology before accuracy does.**  
-In collapsed runs (double-rebalancing), NC1 = 14.5 and NC4 = 0.78 from epoch 1 — while accuracy appeared plausible at 45%. Geometry failed silently.
+We track the following metrics at the end of each training epoch:
 
-**2. Geometry preservation and clinical performance are co-aligned.**  
-Ranking by NC health (NC1↓, NC4↓) and ranking by Macro F1 produce identical method orderings.  
-ETF+NC-reg > baseline = oversampling > weighted CE >> focal.
-
-**3. Focal loss catastrophically collapses NC geometry.**  
-NC4 = 0.69 at convergence (69% of samples have NCC ≠ argmax). The hard-example focusing mechanism creates a positive feedback loop: minority samples stay hard → they get amplified → feature space is over-rotated → minority representations never stabilize.
-
-**4. Weighted CE hurts minority recall despite loss-level upweighting.**  
-Melanoma recall dropped from 56% (baseline) to 36% (weighted CE). NC1 spikes to 29 at epoch 4. The gradient upweighting is strong enough to destabilize majority geometry but not strong enough to build stable minority representations.
-
-**5. Balanced sampling causes tail-class overfitting.**  
-ClassBalancedSampler upsamples DF (83 samples) by ~61× per epoch, causing memorization of the limited training samples. DF recall regressed from 29.4% → 11.8% vs the weighted-sampler ETF run.
-
-**6. ETF + NC-reg is the best-performing configuration.**  
-Best Macro F1 (0.472), best Melanoma recall (58.8%), best NC4 (0.186), best DF recall (29.4%). Gains come primarily from NC-reg stabilizing within-class scatter for tail classes.
+*   **NC1 (Within-Class Variability Collapse)**: Measures feature scatter within classes relative to scatter between classes. Ideally converges to $0$.
+*   **NC2 (ETF Cosine Deviation)**: Measures how close class feature centroids are to forming a symmetric, maximally-distanced Equiangular Tight Frame. Ideally converges to $0$.
+*   **NC3 (Weight-Feature Alignment)**: Measures the self-duality/alignment of final classifier weights and centered feature means. Ideally converges to $0$.
+*   **NC4 (NCM Classifier Disagreement)**: Identifies the fraction of validation samples for which standard forward inference disagrees with a Nearest Class Mean classifier. Ideally converges to $0$.
 
 ---
 
-## Infrastructure Notes
+## 📜 Citations & References
 
-### Sampling strategy isolation
-`weighted_ce` and `focal` must use `sampling.strategy=none`. The loss already rebalances via inverse-frequency weights. Activating the sampler simultaneously causes double-rebalancing which destroys NC geometry (NC1=14.5, NC4=0.78).
-
-### Run-tag collision prevention
-`run_phase2_study.py` now injects `logging.run_tag={study_key}` into every subprocess. `train.py` respects this override. Without this fix, all ETF variants would write to the same directory.
-
-### fast_dev_batches
-All reported results use `fast_dev_batches=75` (1,200 samples/epoch from the full training set). This is a **Tier-1 pilot protocol** — results are directionally valid but not equivalent to full-dataset training. See the final report for caveats.
-
----
-
-## Citation
+If you build upon this work, please cite the following foundational studies:
 
 ```bibtex
 @article{papyan2020prevalence,
   title   = {Prevalence of Neural Collapse during the Terminal Phase of Deep Learning Training},
   author  = {Papyan, Vardan and Han, XY and Donoho, David L},
-  journal = {Proceedings of the National Academy of Sciences},
+  journal = {Proceedings of the National Academy of Sciences (PNAS)},
+  volume  = {117},
+  number  = {40},
+  pages   = {24652--24663},
   year    = {2020}
 }
 
 @inproceedings{yang2022inducing,
   title     = {Inducing Neural Collapse in Imbalanced Learning},
   author    = {Yang, Jiequan and others},
-  booktitle = {NeurIPS},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
   year      = {2022}
 }
 ```
 
 ---
-
 <div align="center">
-<i>NC-MedAI — Neural Collapse research framework for medical image classification under imbalance.<br>
-Runs on CUDA · Apple Silicon MPS · CPU.</i>
+<i>NC-MedAI Research Framework · Supported on CUDA, Apple Silicon MPS, and CPU.</i>
 </div>

@@ -271,7 +271,7 @@ def main() -> None:
     cls_data  = {k: df for k, d in present.items() if (df := _load_class_metrics(d)) is not None}
     acc_data  = {k: v for k, d in present.items() if (v := _load_val_acc(d)) is not None}
 
-    print(f"\nGenerating plots → {out_dir.relative_to(ROOT)}/")
+    print(f"\nGenerating plots -> {out_dir.relative_to(ROOT)}/")
     print(f"  NC data available: {list(nc_data.keys())}")
     print(f"  Class data available: {list(cls_data.keys())}\n")
 
