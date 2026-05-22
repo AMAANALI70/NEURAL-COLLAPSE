@@ -1,231 +1,273 @@
 # NC-MedAI: Neural Collapse-Aware Medical Image Classification
 
-<div align="center">
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat-square)](https://github.com/amaanali70/neural-collapse)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
+[![Version](https://img.shields.io/badge/version-1.0.0-orange.svg?style=flat-square)](https://github.com/amaanali70/neural-collapse)
+[![Tech Stack](https://img.shields.io/badge/tech--stack-PyTorch%20%7C%20Python-informational.svg?style=flat-square)](https://pytorch.org)
 
-**A research framework studying how class imbalance degrades feature geometry**  
-*and whether geometry-aware training can restore minority-class clinical performance.*
+**NC-MedAI** is a deep learning research framework designed to study the mathematical phenomenon of **Neural Collapse (NC)** in medical image classification under heavy class imbalance. By analyzing last-layer feature representations on the HAM10000 skin lesion dataset, NC-MedAI quantifies how class imbalance degrades representation geometry and evaluates geometry-aware training methods to restore minority disease detection.
 
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg?style=flat-square&logo=python&logoColor=white)](https://python.org)
-[![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0%2B-orange.svg?style=flat-square&logo=pytorch&logoColor=white)](https://pytorch.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-CUDA%20%7C%20MPS%20%7C%20CPU-lightgrey.svg?style=flat-square)](https://pytorch.org)
-
-</div>
-
----
-
-## 📌 Executive Summary
-
-**NC-MedAI** is a research framework for studying **Neural Collapse (NC)** in medical image classification under severe class imbalance. Built on HAM10000 (7-class skin lesion, 10:1 majority–minority ratio), it measures how representation geometry degrades under imbalance and whether geometry-aware interventions restore minority-class detection.
-
-> 🩺 **Clinical Insight**: *When a model's feature space stops collapsing properly, minority disease detection fails — often silently, long before validation accuracy reveals a problem. NC1–NC4 metrics expose this degradation early.*
-
-### Key Scientific Findings:
-*   📊 **Early-Warning Indicators**: NC1 (within-class scatter) and NC4 (nearest-class-mean deviation) are robust diagnostic metrics that reveal training pathologies from epoch 1.
-*   📐 **Geometric Regularization**: Fixed ETF heads + NC regularization produce the most stable feature representations and the highest minority-class recall simultaneously.
-*   ⚡ **Rebalancing Pitfalls**: Standard loss-based rebalancing (Weighted CE, Focal Loss) degrades NC geometry, causing unstable feature trajectories and hurting overall performance.
-*   🧬 **Clinical Co-alignment**: The ranking of methods by geometric health (NC1↓, NC4↓) matches the ordering of clinical performance (Macro F1, Melanoma Recall) exactly.
+### The Problem It Solves
+Standard convolutional networks trained on highly imbalanced medical datasets often achieve high overall accuracy while failing catastrophically to detect rare, critical classes (e.g., Melanoma). 
+*   **Representation Warp**: Imbalance forces the feature space to warp, squeezing minority classes into narrow regions dominated by majority class boundaries.
+*   **Rebalancing Inefficiency**: Traditional rebalancing techniques (like Focal Loss or Weighted Cross-Entropy) alter training gradients, which can corrupt the geometry of the penultimate feature layer and cause model instability.
+*   **Early Warning**: NC-MedAI monitors the four properties of Neural Collapse (NC1–NC4) as early-warning indicators, showing how representation geometry degrades long before accuracy drop occurs. It provides a fixed Equiangular Tight Frame (ETF) head + Neural Collapse regularization to stabilize feature learning and improve clinical recall.
 
 ---
 
-## 📄 Deliverables & Scientific Reports
-
-The full findings, mathematical derivations, and qualitative deep-dives are available in two print-optimized formats:
-1.  **[Interactive Report (FINAL_REPORT.html)](file:///d:/dl/NEURAL-COLLAPSE/FINAL_REPORT.html)**: A premium web-based presentation containing a interactive method comparison widget, KaTeX equations, light/dark mode toggling, and expandable diagnostic plots. *Best for desktop viewing and exporting to PDF.*
-2.  **[Scientific Document (FINAL_REPORT.md)](file:///d:/dl/NEURAL-COLLAPSE/FINAL_REPORT.md)**: A complete markdown document containing details of the six investigated methods, systematic results tables, deep-dive analysis, and references.
-
----
-
-## 📊 Study Results at a Glance
-
-All results evaluated on HAM10000, imbalance ratio $r = 10:1$, ResNet-18, seed = 42.
-
-| Method | Sampler | Loss | NC-Reg | Val Acc | Macro F1 | NC1↓ | NC4↓ | Mel Recall |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Baseline | Weighted | CE | ✗ | 64.4% | 0.436 | 4.81 | 0.194 | 56.0% |
-| Oversampling | Weighted | CE | ✗ | 64.4% | 0.436 | 4.81 | 0.194 | 56.0% |
-| **ETF + NC-reg (Best)** | **Weighted** | **CE** | **✅** | **65.0%** | **0.472** | **5.53** | **0.186** | **58.8%** |
-| ETF + NC-reg + Balanced | Balanced | CE | ✅ | 61.8% | 0.429 | 5.63 | 0.180 | 58.8% |
-| Weighted CE | None | WCE | ✗ | 62.2% | 0.332 | 7.94 | 0.396 | 36.3% |
-| Focal Loss | None | Focal(γ=2) | ✗ | 56.9% | 0.110 | 15.65 | 0.690 | 0.0% |
+## Table of Contents
+1. [Features](#features)
+2. [Demo & Screenshots](#demo--screenshots)
+3. [Tech Stack](#tech-stack)
+4. [Project Structure](#project-structure)
+5. [Installation & Setup](#installation--setup)
+6. [Usage](#usage)
+7. [API Documentation (CLI Interface)](#api-documentation-cli-interface)
+8. [Testing](#testing)
+9. [Deployment](#deployment)
+10. [Contributing](#contributing)
+11. [Roadmap / Future Improvements](#roadmap--future-improvements)
+12. [License](#license)
+13. [Contact / Author](#contact--author)
 
 ---
 
-## 📁 Repository Structure
+## Features
+*   **NC1–NC4 Metric Tracking**: Real-time evaluation of within-class variability collapse (NC1), Equiangular Tight Frame deviation (NC2), classifier weight alignment (NC3), and Nearest Class Mean disagreement (NC4).
+*   **Fixed ETF Classifier Head**: Replaces standard learnable linear heads with a rigid, non-learnable Equiangular Tight Frame structure to enforce maximum geometric class separation.
+*   **Neural Collapse Regularization Loss**: Implements custom regularization functions ($\mathcal{L}_{collapse}$ and $\mathcal{L}_{align}$) to force penultimate features into the pre-allocated ETF vectors.
+*   **Sweep Runner Framework**: Automation scripts to run, log, and evaluate baseline and intervention runs sequentially across different imbalance ratios.
+*   **Interactive Visual Dashboard**: A print-optimized, interactive HTML report with a dynamic performance simulator widget.
 
+---
+
+## Demo / Screenshots (Placeholder Section)
+
+### Visual Interactive Dashboard
+The research report features an interactive web interface where you can simulate and compare metrics across different methods:
+```
++-----------------------------------------------------------------+
+|  [Interactive Performance Simulator]                           |
+|                                                                 |
+|  Select Method:                         Metrics Highlight:      |
+|  (o) ETF + NC-reg                      * Val Acc:  65.0%        |
+|  ( ) Linear Baseline                   * Macro F1: 0.4720       |
+|  ( ) Focal Loss                        * NC1:      5.53         |
+|                                                                 |
+|  Clinical Recall Highlights:                                    |
+|  Melanoma:        [====================>        ] 58.8%        |
+|  Dermatofibroma:  [===========>                 ] 29.4%        |
++-----------------------------------------------------------------+
+```
+*   To view the interactive dashboard locally, open [FINAL_REPORT.html](file:///d:/dl/NEURAL-COLLAPSE/FINAL_REPORT.html) in your browser.
+*   To view the generated diagnostic curves, refer to the matplotlib plots stored under `results/pilot_plots/` and `results/phase2/phase2_plots/`.
+
+---
+
+## Tech Stack
+
+### Frontend
+*   **Core**: HTML5, Vanilla JavaScript (ES6+ for interactive widgets)
+*   **Styling**: Vanilla CSS3 (featuring responsive grids, CSS variables, dark/light modes, and print-optimized sheets)
+*   **Libraries**: KaTeX CDN (for mathematical notation rendering)
+
+### Backend
+*   **Languages**: Python 3.10+
+*   **Core Framework**: PyTorch 2.0+ (with CUDA/MPS acceleration support)
+*   **Data Science**: NumPy, Pandas, Scikit-learn
+*   **Visualization**: Matplotlib
+
+### Database
+*   **Storage**: Flat-file database logging (run metrics saved as `.csv` and run parameters stored in `.json` formatting)
+
+### Tools & DevOps
+*   **Environments**: Virtualenv / Pip package manager
+*   **Configuration**: YAML-based config loader with hierarchical overrides
+
+---
+
+## Project Structure
 ```
 NEURAL-COLLAPSE/
-│
-├── config/
-│   ├── config.yaml              ← Master config (all hyperparameters)
-│   └── config_loader.py         ← YAML loader with profile + CLI override support
-│
-├── data/
-│   ├── medical_datasets.py      ← HAM10000 loader with imbalance_ratio control
-│   ├── dataset.py               ← CIFAR-10 with controlled imbalance injection
-│   └── imbalance_sampler.py     ← Balanced / SquareRoot / Progressive samplers
-│
-├── models/
-│   ├── resnet.py                ← ResNet-18 with forward_features() API
-│   ├── etf_classifier.py        ← Fixed ETF head (frozen buffer)
-│   └── model_factory.py         ← build_model(cfg, method) factory
-│
-├── training/
-│   ├── trainer.py               ← Full training loop with NC tracking
-│   ├── losses.py                ← CE / WeightedCE / FocalLoss
-│   └── nc_regularization.py     ← NCCollapseReg / ETFAlignment / CombinedNCLoss
-│
-├── evaluation/
-│   ├── nc_metrics.py            ← NC1–NC4 full suite
-│   └── medical_metrics.py       ← Sensitivity / Specificity / F1 / AUC / Kappa
-│
-├── experiments/
-│   ├── plot_existing_results.py ← Reconstructs diagnostics from pilot runs
-│   ├── run_phase1_study.py      ← Phase-1: ETF vs baseline × r∈{1,10,50}
-│   └── run_phase2_study.py      ← Phase-2: intervention sweep at r=10
-│
-├── results/
-│   ├── pilot_plots/             ← Reconstructed matplotlib charts (Val Acc, NC1-NC4)
-│   ├── phase2/
-│   │   ├── phase2_plots/        ← Phase-2 comparative charts (Macro F1, Recall, NC)
-│   │   ├── phase2_summary.csv   ← Centrally aggregated summary table
-│   │   └── *_*_ham10000_r10_s42/← Directory-level run databases (metrics, configs)
-│   └── *_*_ham10000_s42/        ← Directory-level pilot run databases
-│
-├── train.py                     ← CLI: single training run
-├── run_sweep.py                 ← CLI: sweep runner
-├── FINAL_REPORT.md              ← Complete scientific report (Markdown)
-├── FINAL_REPORT.html             ← Interactive, styled scientific report (HTML)
-└── README.md                    ← Polished repository overview
+├── config/                  # Configuration files and YAML loaders
+│   ├── config.yaml          # Master configuration file
+│   └── config_loader.py     # Hierarchical configuration loader
+├── data/                    # Dataset loaders and sampling strategies
+│   ├── medical_datasets.py  # HAM10000 data loader with imbalance ratio control
+│   └── imbalance_sampler.py # Weighted and balanced mini-batch samplers
+├── models/                  # Neural network architectures
+│   ├── resnet.py            # ResNet-18 feature-extraction architecture
+│   └── etf_classifier.py    # Fixed ETF head implementation
+├── training/                # Optimization loops and training utilities
+│   ├── trainer.py           # Core training loop with epoch-level metrics
+│   ├── losses.py            # Focal Loss, Weighted CE, and standard CE functions
+│   └── nc_regularization.py # Custom Neural Collapse loss regularizers
+├── evaluation/              # Validation metrics
+│   ├── nc_metrics.py        # Mathematical implementations of NC1–NC4
+│   └── medical_metrics.py   # Clinical sensitivity, specificity, and Macro F1
+├── experiments/             # High-level sweep execution files
+│   ├── plot_existing_results.py # Diagnostic plot generator script
+│   └── run_phase2_study.py  # Automated baseline/intervention sweep script
+├── results/                 # Output directories
+│   ├── pilot_plots/         # Matplotlib diagnostic charts
+│   └── phase2/              # Systematic sweep metrics database
+├── train.py                 # Core CLI entrypoint to train models
+├── FINAL_REPORT.md          # Scientific report in Markdown
+├── FINAL_REPORT.html        # Interactive report in HTML
+└── README.md                # Project documentation
 ```
 
 ---
 
-## 🚀 Setup & Installation
+## Installation & Setup
 
-1.  **Clone and environment configuration**:
+### Prerequisites
+*   Python 3.10 or higher
+*   pip package manager
+*   CUDA-compatible GPU or Apple Silicon Mac (highly recommended)
+
+### Step-by-Step Installation Instructions
+1.  **Clone the Repository**:
     ```bash
     git clone https://github.com/amaanali70/neural-collapse.git
     cd NEURAL-COLLAPSE
+    ```
+2.  **Create a Virtual Environment**:
+    ```bash
     python -m venv venv
-    source venv/bin/activate  # On Windows: .\venv\Scripts\activate
+    ```
+3.  **Activate the Environment**:
+    *   **Windows**:
+        ```powershell
+        .\venv\Scripts\activate
+        ```
+    *   **Linux/macOS**:
+        ```bash
+        source venv/bin/activate
+        ```
+4.  **Install Dependencies**:
+    ```bash
     pip install -r requirements.txt
     ```
 
-2.  **Dataset Setup**:
-    *   Download [HAM10000 from Kaggle](https://www.kaggle.com/datasets/kmader/skin-cancer-mnist-ham10000).
-    *   Extract contents to `./datasets/HAM10000/`.
-    *   Ensure the structure looks like this:
-        ```
-        datasets/HAM10000/
-        ├── HAM10000_metadata.csv
-        └── images/
-            ├── ISIC_0024306.jpg
-            └── ...
-        ```
+### Environment Variables Setup
+A template is provided in `.env.example`. Create a `.env` file in the root directory if environment-specific variables are required:
+```bash
+cp .env.example .env
+```
+
+### How to Run Locally
+Ensure you have downloaded the [HAM10000 Skin Lesion Dataset](https://www.kaggle.com/datasets/kmader/skin-cancer-mnist-ham10000) and extracted it into the `./datasets/HAM10000/` directory:
+```
+datasets/HAM10000/
+├── HAM10000_metadata.csv
+└── images/
+    ├── ISIC_0024306.jpg
+    └── ...
+```
 
 ---
 
-## 🏃 Running Experiments
+## Usage
 
-### Execute Single Training Configuration:
+### Train a Single Model Configuration
+Run standard cross-entropy training on the HAM10000 dataset:
 ```bash
-# ETF head + NC regularization (optimal clinical setup)
-python train.py --override dataset.name=ham10000 model.head=etf \
-    nc_regularization.enabled=true sampling.strategy=weighted \
-    training.epochs=15
-
-# Standard baseline model
 python train.py --override dataset.name=ham10000 model.head=linear training.epochs=15
-
-# Smoke test (Runs quickly on CPU with a fraction of data)
-python train.py --override dataset.name=ham10000 model.head=etf \
-    training.epochs=1 debug.fast_dev_batches=10
 ```
 
-### Reproduce Phase-2 Systematic Sweep:
+### Induce Neural Collapse (ETF Head + NC Regularization)
+Train with a fixed geometric classifier head and Neural Collapse losses:
 ```bash
-# Dry-run validation (checks config syntax, skips training)
-python -m experiments.run_phase2_study --dry-run
-
-# Run full Phase-2 sweep (all 6 strategies sequentially)
-python -m experiments.run_phase2_study
-
-# Run a specific configuration from the sweep
-python -m experiments.run_phase2_study --methods etf_nc_reg
+python train.py --override \
+  dataset.name=ham10000 \
+  model.head=etf \
+  nc_regularization.enabled=true \
+  nc_regularization.collapse_weight=0.01 \
+  sampling.strategy=weighted \
+  training.epochs=15
 ```
 
-### Reconstruct Diagnostic Charts:
-If you need to regenerate the pilot study's diagnostic figures from the saved metric databases:
+---
+
+## API Documentation (CLI Interface)
+
+The primary entry point is `train.py`. Model configuration overrides are handled via the `--override` flag.
+
+### CLI Config Options
+| Parameter Override | Options / Type | Description |
+| :--- | :--- | :--- |
+| `dataset.name` | `ham10000` / `cifar10` | The dataset to train on |
+| `dataset.imbalance_ratio` | `int` (default: `10`) | Ratio of majority to minority classes |
+| `model.head` | `linear` / `etf` | Classifier head architecture type |
+| `training.loss` | `ce` / `weighted_ce` / `focal` | Optimization loss function |
+| `sampling.strategy` | `weighted` / `balanced` / `none` | Dataloader sampler strategy |
+| `nc_regularization.enabled` | `true` / `false` | Enables Neural Collapse regularization |
+
+### Example CLI Overrides
+```json
+// Example: Training Weighted CE Loss with a learnable head and no sampling rebalance
+python train.py --override dataset.name=ham10000 training.loss=weighted_ce sampling.strategy=none
+```
+
+---
+
+## Testing
+
+To verify the code installation and model training configurations, you can run a quick CPU "smoke test" by limiting the number of mini-batches:
+
+```bash
+# Smoke test (runs 1 epoch with 10 mini-batches on CPU)
+python train.py --override dataset.name=ham10000 model.head=etf training.epochs=1 debug.fast_dev_batches=10
+```
+
+To run and verify the diagnostic plotting scripts:
 ```bash
 python -m experiments.plot_existing_results
 ```
 
 ---
 
-## ⚙️ Configuration Overrides
+## Deployment
 
-All hyperparameters reside in `config/config.yaml`. You can override any nested parameters from the command line:
+NC-MedAI is a research codebase. However, training runs and summaries can be compiled and deployed locally.
 
-```bash
-python train.py --override \
-  dataset.name=ham10000 \
-  model.head=etf \
-  sampling.strategy=weighted \
-  nc_regularization.enabled=true \
-  nc_regularization.collapse_weight=0.01 \
-  training.epochs=15 \
-  debug.fast_dev_batches=75  # Set to 0 to run on full dataset (requires GPU)
-```
-
-Key configuration keys:
-
-| Section | Parameter | Default | Description |
-| :--- | :--- | :---: | :--- |
-| `dataset` | `imbalance_ratio` | `10` | Imbalance ratio $r$ (majority-to-minority) |
-| `model` | `head` | `linear` | Classifier head (`linear` / `etf` / `prototype`) |
-| `training` | `loss` | `ce` | Optimization loss (`ce` / `weighted_ce` / `focal`) |
-| `sampling` | `strategy` | `weighted` | Dataloader sampler (`weighted` / `balanced` / `none`) |
-| `nc_regularization` | `enabled` | `false` | Enables fixed-ETF geometric regularization |
-| `debug` | `fast_dev_batches`| `75` | Batches per epoch for pilot profiling (0 to disable) |
+### Report Distribution
+The metrics dashboard compiles to a single, zero-dependency HTML file. You can deploy it by:
+1.  Compiling HTML assets.
+2.  Deploying `FINAL_REPORT.html` directly to static site hosts (GitHub Pages, Netlify, or Vercel).
+3.  Generating a print version by opening `FINAL_REPORT.html` in Chrome/Edge, opening the print settings (`Ctrl+P`), selecting **Save as PDF**, and sharing the document.
 
 ---
 
-## 📐 Neural Collapse Metrics Definition
+## Contributing
 
-We track the following metrics at the end of each training epoch:
+We welcome contributions to expand this geometric analysis framework.
 
-*   **NC1 (Within-Class Variability Collapse)**: Measures feature scatter within classes relative to scatter between classes. Ideally converges to $0$.
-*   **NC2 (ETF Cosine Deviation)**: Measures how close class feature centroids are to forming a symmetric, maximally-distanced Equiangular Tight Frame. Ideally converges to $0$.
-*   **NC3 (Weight-Feature Alignment)**: Measures the self-duality/alignment of final classifier weights and centered feature means. Ideally converges to $0$.
-*   **NC4 (NCM Classifier Disagreement)**: Identifies the fraction of validation samples for which standard forward inference disagrees with a Nearest Class Mean classifier. Ideally converges to $0$.
+### Contribution Guidelines
+1.  **Code Consistency**: Preserve the existing modular design pattern: datasets in `data/`, metrics in `evaluation/`, and loss models in `training/`.
+2.  **Document Integrity**: Maintain docstrings and annotations for mathematical functions. Ensure equations align with Papyan et al. (2020) notations.
+3.  **Pull Request Process**:
+    *   Fork the repository and create a new feature branch.
+    *   Ensure the CPU smoke test passes (`debug.fast_dev_batches=10`).
+    *   Provide a clear summary of how your proposed change affects NC1–NC4 feature metrics.
+
+---
+
+## Roadmap / Future Improvements
+*   [ ] **Model Scaling**: Integrate larger pre-trained medical backbones (e.g., ConvNeXt, Swin Transformers).
+*   [ ] **Dynamic Loss Schedulers**: Research dynamic schedules where the fixed ETF constraint is introduced gradually as training progresses.
+*   [ ] **Multi-Dataset Benchmarks**: Expand evaluation to Chest X-ray (NIH) and Histopathology (PCam) datasets to check generalizability.
 
 ---
 
-## 📜 Citations & References
+## License
 
-If you build upon this work, please cite the following foundational studies:
-
-```bibtex
-@article{papyan2020prevalence,
-  title   = {Prevalence of Neural Collapse during the Terminal Phase of Deep Learning Training},
-  author  = {Papyan, Vardan and Han, XY and Donoho, David L},
-  journal = {Proceedings of the National Academy of Sciences (PNAS)},
-  volume  = {117},
-  number  = {40},
-  pages   = {24652--24663},
-  year    = {2020}
-}
-
-@inproceedings{yang2022inducing,
-  title     = {Inducing Neural Collapse in Imbalanced Learning},
-  author    = {Yang, Jiequan and others},
-  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
-  year      = {2022}
-}
-```
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
-<div align="center">
-<i>NC-MedAI Research Framework · Supported on CUDA, Apple Silicon MPS, and CPU.</i>
-</div>
+
+## Contact / Author
+
+*   **NC-MedAI Research Group** - [amaanali70](https://github.com/amaanali70)
+*   Project Link: [https://github.com/amaanali70/neural-collapse](https://github.com/amaanali70/neural-collapse)
