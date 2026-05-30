@@ -63,7 +63,7 @@ All results evaluated on HAM10000, imbalance ratio $r = 10:1$, ResNet-18, seed =
 ### NC-MedAI System Architecture
 The diagram below outlines our deep learning pipeline. It traces the flow from the input skin lesion, through the ResNet-18 backbone, to the extracted penultimate features. These features are then passed to the novel **Fixed ETF Classifier Head** and optimized with our custom **Neural Collapse Regularization** loss to produce debiased predictions.
 
-![System Architecture Diagram](assets/system_architecture.png)
+![System Architecture Diagram](assets/system_architecture.jpg)
 
 ### The Geometry of Neural Collapse
 The visual below demonstrates the fundamental geometric mechanism of Neural Collapse. On the left, feature vectors from a standard network are diffusely scattered. On the right, by enforcing our ETF geometric constraint, the features "collapse" into perfect, tight clusters at the tips of the ETF simplex, maximizing inter-class separability even under severe data imbalance.
