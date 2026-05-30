@@ -58,8 +58,22 @@ All results evaluated on HAM10000, imbalance ratio $r = 10:1$, ResNet-18, seed =
 
 ---
 
-## Demo / Screenshots (Placeholder Section)
-*This section contains visual representations of the training runs. The reconstructed matplotlib plots will be stored here in production:*
+## System Architecture & Geometric Visualizations
+
+### NC-MedAI System Architecture
+The diagram below outlines our deep learning pipeline. It traces the flow from the input skin lesion, through the ResNet-18 backbone, to the extracted penultimate features. These features are then passed to the novel **Fixed ETF Classifier Head** and optimized with our custom **Neural Collapse Regularization** loss to produce debiased predictions.
+
+![System Architecture Diagram](assets/system_architecture.png)
+
+### The Geometry of Neural Collapse
+The visual below demonstrates the fundamental geometric mechanism of Neural Collapse. On the left, feature vectors from a standard network are diffusely scattered. On the right, by enforcing our ETF geometric constraint, the features "collapse" into perfect, tight clusters at the tips of the ETF simplex, maximizing inter-class separability even under severe data imbalance.
+
+![Neural Collapse Geometry](assets/neural_collapse_geometry.png)
+
+---
+
+## Metric Plots & Run Analytics
+*This section contains the reconstructed matplotlib plots of our training evaluations:*
 
 *   **[Pilot Validation Curve (Placeholder)](results/pilot_plots/val_acc_vs_epoch.png)**: Shows comparison curves of validation accuracy over 30 epochs.
 *   **[NC1 Collapse Metric (Placeholder)](results/pilot_plots/nc1_vs_epoch.png)**: Displays how features condense within their classes.
