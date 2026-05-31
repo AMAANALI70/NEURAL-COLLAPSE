@@ -66,6 +66,9 @@ Standard cross-entropy training under heavy class imbalance causes the feature s
 
 ## 2. Methodology & Experimental Design
 
+![NC-MedAI System Architecture](assets/system_architecture.png)
+*Figure 1: The NC-MedAI System Architecture showcasing the configuration, preprocessing, deep learning backbone (ResNet-18), classifier heads, and evaluation modules used in our experiments.*
+
 ### 2.1 Dataset Subsampling & Imbalance Protocol
 To study the degradation of representation geometry under controlled conditions, we constructed a **Tier-1 pilot protocol** using HAM10000:
 *   **Subsampling**: We limit each epoch to a fixed budget of 75 batches (1,200 samples/epoch) to isolate feature learning dynamics in a computationally controlled setting.

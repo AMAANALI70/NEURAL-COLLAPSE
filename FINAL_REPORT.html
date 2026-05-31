@@ -988,6 +988,16 @@
     <!-- Methodology Section -->
     <section id="methodology">
       <h2>2. Methodology & Experimental Design</h2>
+      
+      <div class="plot-card" style="margin-bottom: 2.5rem; max-width: 100%;">
+        <div class="plot-img-container" style="height: auto; padding: 1.5rem;">
+          <img src="assets/system_architecture.png" alt="NC-MedAI System Architecture" style="width: 100%; max-height: none;" onclick="openModal(this)">
+        </div>
+        <div class="plot-info">
+          <div class="plot-title">Figure 1: NC-MedAI System Architecture</div>
+          <div class="plot-desc">Showcasing the configuration, preprocessing, deep learning backbone (ResNet-18), classifier heads, and evaluation modules used in our experiments.</div>
+        </div>
+      </div>
       <p>To study how class imbalance degrades representation geometry, we utilize the <strong>HAM10000</strong> medical dataset (10,015 skin lesion images across 7 classes). Nevi is treated as the majority class, and all other classes are downsampled to establish a controlled <strong>10:1 class imbalance ratio</strong>.</p>
       <p>Our network backbone is a <strong>ResNet-18</strong> optimized with SGD (learning rate = $0.01$, weight decay = $1\times 10^{-4}$) and a cosine learning rate scheduler. To isolate feature learning dynamics, we employ a <strong>Tier-1 pilot protocol</strong> where epochs are budgeted to a fixed subset of 75 batches (1,200 samples/epoch).</p>
 
