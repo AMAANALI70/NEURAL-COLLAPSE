@@ -41,7 +41,11 @@ Outputs (all optional, fail-safe)
 from __future__ import annotations
 
 import csv
-import fcntl
+try:
+    import fcntl
+    HAS_FCNTL = True
+except ImportError:
+    HAS_FCNTL = False
 import json
 import logging
 import os
@@ -417,13 +421,15 @@ def _update_registry(
     write_header = not registry_path.exists()
     with open(registry_path, "a", newline="") as f:
         try:
-            fcntl.flock(f, fcntl.LOCK_EX)
+            if HAS_FCNTL:
+                fcntl.flock(f, fcntl.LOCK_EX)
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             if write_header:
                 writer.writeheader()
             writer.writerow(row)
         finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
+            if HAS_FCNTL:
+                fcntl.flock(f, fcntl.LOCK_UN)
     _log.info(f"  [reporter] experiment_registry.csv updated → {registry_path}")
 
 

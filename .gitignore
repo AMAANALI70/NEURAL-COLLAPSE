@@ -63,7 +63,9 @@ checkpoints/
 !checkpoints/.gitkeep
 
 # ── Results & logs (generated outputs) ───────────────────────────────────────
-results/
+results/**
+!results/pilot_plots/**
+!results/phase2/phase2_plots/**
 logs/
 *.log
 *.csv         # sweep result CSVs are generated — exclude from repo
@@ -71,12 +73,7 @@ logs/
 !logs/.gitkeep
 
 # ── Plots / images (generated) ───────────────────────────────────────────────
-*.png
-*.jpg
-*.jpeg
-*.pdf
-*.svg
-!assets/
+# (Allowed to track visual comparison plots and system diagrams)
 
 # ── TensorBoard ───────────────────────────────────────────────────────────────
 runs/
