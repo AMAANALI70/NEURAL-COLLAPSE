@@ -45,16 +45,18 @@ Standard deep learning classifiers trained on heavily imbalanced medical dataset
 
 ## 📊 Study Results at a Glance
 
-All results evaluated on HAM10000, imbalance ratio $r = 10:1$, ResNet-18, seed = 42.
+All results evaluated on HAM10000, full dataset (50 epochs), imbalance ratio $r = 10:1$, ResNet-18, seed = 42.
 
-| Method | Sampler | Loss | NC-Reg | Val Acc | Macro F1 | NC1↓ | NC4↓ | Mel Recall |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Baseline | Weighted | CE | ✗ | 64.4% | 0.436 | 4.81 | 0.194 | 56.0% |
-| Oversampling | Weighted | CE | ✗ | 64.4% | 0.436 | 4.81 | 0.194 | 56.0% |
-| **ETF + NC-reg (Best)** | **Weighted** | **CE** | **✅** | **65.0%** | **0.472** | **5.53** | **0.186** | **58.8%** |
-| ETF + NC-reg + Balanced | Balanced | CE | ✅ | 61.8% | 0.429 | 5.63 | 0.180 | 58.8% |
-| Weighted CE | None | WCE | ✗ | 62.2% | 0.332 | 7.94 | 0.396 | 36.3% |
-| Focal Loss | None | Focal(γ=2) | ✗ | 56.9% | 0.110 | 15.65 | 0.690 | 0.0% |
+| Method | Sampler | Loss | NC-Reg | Val Acc | Macro F1 | ROC-AUC | NC1↓ | NC2↓ | NC4↓ | Mel Recall |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| Baseline | Weighted | CE | ✗ | 84.82% | 0.7544 | 0.9702 | 4.8807 | 1.1275 | 0.2770 | 53.85% |
+| Oversampling | Weighted | CE | ✗ | 84.82% | 0.7544 | 0.9702 | 4.8807 | 1.1275 | 0.2770 | 53.85% |
+| **ETF + NC-reg (Clinical Best)** | **Weighted** | **CE** | **✅** | **85.42%** | **0.7491** | **0.9692** | **3.4862** | **0.9156** | **0.1838** | **64.84%** |
+| ETF + NC-reg + Balanced | Balanced | CE | ✅ | 86.09% | 0.7697 | 0.9703 | 2.2480 | 0.6939 | 0.1032 | 54.95% |
+| Weighted CE | None | WCE | ✗ | 82.22% | 0.6905 | 0.9633 | 4.3083 | 1.0771 | 0.2703 | 63.19% |
+| Focal Loss | None | Focal(γ=2) | ✗ | 68.71% | 0.5011 | 0.9285 | 6.0644 | 1.2001 | 0.2284 | 53.30% |
+
+> *Note: ETF+NC-reg+Balanced achieves the best overall F1 and geometry, but ETF+NC-reg achieves the highest clinical safety margin (Melanoma Recall).*
 
 ---
 
@@ -75,11 +77,11 @@ The visual below demonstrates the fundamental geometric mechanism of Neural Coll
 ## Metric Plots & Run Analytics
 *This section contains the reconstructed matplotlib plots of our training evaluations:*
 
-*   **[Pilot Validation Curve (Placeholder)](results/pilot_plots/val_acc_vs_epoch.png)**: Shows comparison curves of validation accuracy over 30 epochs.
-*   **[NC1 Collapse Metric (Placeholder)](results/pilot_plots/nc1_vs_epoch.png)**: Displays how features condense within their classes.
-*   **[Per-Class Recall Comparison Chart (Placeholder)](results/pilot_plots/per_class_recall_comparison.png)**: Visualizes the recall of each of the 7 skin lesion types.
+*   **[NC1 Collapse Metric Evolution](results/phase2/paper_figures/evolution_nc1.png)**: Displays how features condense within their classes over 50 epochs.
+*   **[t-SNE ETF Feature Projection](results/phase2/paper_figures/tsne_etf_nc_reg.png)**: Visualizes the structurally tight clustering formed by the fixed ETF head.
+*   **[Per-Class Recall Comparison Chart](results/phase2/phase2_plots/phase2_melanoma_recall.png)**: Visualizes the melanoma recall of each configuration.
 
-*(Refer to `results/pilot_plots/` and `results/phase2/phase2_plots/` for generated `.png` assets).*
+*(Refer to `results/phase2/paper_figures/` and `results/phase2/phase2_plots/` for generated `.png` assets).*
 
 ---
 

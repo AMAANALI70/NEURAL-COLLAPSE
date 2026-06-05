@@ -39,6 +39,7 @@ ENV/
 *.ipynb          # comment this out if you want to track notebooks
 
 # ── Data — never commit raw datasets (too large; use .gitkeep instead) ────────
+datasets/
 data/raw/
 data/processed/
 data/cache/
@@ -66,6 +67,8 @@ checkpoints/
 results/**
 !results/pilot_plots/**
 !results/phase2/phase2_plots/**
+!results/phase2/paper_figures/**
+!results/phase2/phase2_summary.csv
 logs/
 *.log
 *.csv         # sweep result CSVs are generated — exclude from repo
