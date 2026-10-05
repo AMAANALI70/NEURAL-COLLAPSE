@@ -53,6 +53,12 @@ class NCCollapseRegularizer(nn.Module):
         features: torch.Tensor,   # (B, D)
         labels: torch.Tensor,     # (B,)
     ) -> torch.Tensor:
+        # Fast path: weight == 0 → this term is disabled; return a clean zero.
+        # Using features.sum() * 0 keeps the zero on the same device/dtype
+        # without building any expensive graph nodes.
+        if self.weight == 0.0:
+            return features.sum() * 0.0
+
         if self.normalise:
             features = F.normalize(features, dim=1)
 
@@ -96,6 +102,10 @@ class ETFAlignmentLoss(nn.Module):
         features: torch.Tensor,   # (B, D)
         labels: torch.Tensor,     # (B,)
     ) -> torch.Tensor:
+        # Fast path: weight == 0 → this term is disabled; return a clean zero.
+        if self.weight == 0.0:
+            return features.sum() * 0.0
+
         # Compute per-class means
         D          = features.shape[1]
         class_means = torch.zeros(self.num_classes, D, device=features.device)

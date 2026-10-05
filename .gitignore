@@ -52,24 +52,29 @@ data/cache/
 !data/processed/.gitkeep
 
 # ── Model weights & checkpoints ───────────────────────────────────────────────
-checkpoints/
+checkpoints/**
 *.pt
 *.pth
 *.ckpt
 *.pkl
 *.h5
 
-# Allow directory placeholder
+# Allow directory placeholders only
+!checkpoints/**/.gitkeep
 !checkpoints/.gitkeep
 
 # ── Results & logs (generated outputs) ───────────────────────────────────────
 results/**
 !results/pilot_plots/**
 !results/phase2/phase2_plots/**
+!results/reviewer_experiments/.gitkeep
+!results/.gitkeep
 logs/
+study_logs/**
+!study_logs/**/.gitkeep
+!study_logs/.gitkeep
 *.log
 *.csv         # sweep result CSVs are generated — exclude from repo
-!results/.gitkeep
 !logs/.gitkeep
 
 # ── Plots / images (generated) ───────────────────────────────────────────────
