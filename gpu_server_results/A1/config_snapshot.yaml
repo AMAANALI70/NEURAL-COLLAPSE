@@ -1,0 +1,115 @@
+_device_info:
+  backend: cuda
+  cpu_count: 4
+  cuda_available: true
+  cuda_version: '12.8'
+  device: cuda
+  estimated_ram_gb: null
+  gpu_memory_gb: 15.64
+  gpu_name: Tesla T4
+  mps_available: false
+  platform: Linux-6.18.48+-x86_64-with-glibc2.39
+  python_version: 3.13.15 (main, Aug  6 2026, 11:06:22) [GCC 13.3.0]
+  pytorch_version: !!python/object/new:torch.torch_version.TorchVersion
+  - 2.11.0+cu128
+_imbalance_ratio: 10
+analysis:
+  lightweight: false
+dataset:
+  image_size: 224
+  imbalance_ratio: 10
+  imbalance_ratios:
+  - 1
+  - 5
+  - 10
+  - 20
+  - 50
+  - 100
+  name: ham10000
+  num_classes: 7
+  root: ./data/raw
+debug:
+  enabled: false
+  fast_dev_batches: 0
+etf:
+  fix_backbone: false
+  scale: 16.0
+evaluation:
+  compute_nc3: true
+  compute_nc4: true
+  nc_batch_size: 128
+  track_nc_every_n_epochs: 5
+focal_loss:
+  alpha: null
+  gamma: 2.0
+logging:
+  checkpoint_dir: /kaggle/working/NEURAL-COLLAPSE/checkpoints/reviewer_experiments/multiseed/etf_nc_reg_ham10000_r10_s7
+  log_every_n_epochs: 1
+  results_dir: /kaggle/working/NEURAL-COLLAPSE/results/reviewer_experiments/multiseed/etf_nc_reg_ham10000_r10_s7
+  run_tag: etf_nc_reg_ham10000_r10_s7
+  save_checkpoints: true
+medical:
+  chestxray:
+    root: ./data/raw/chest_xray
+  ham10000:
+    csv_path: ./datasets/HAM10000/HAM10000_metadata.csv
+    img_dir: ./datasets/HAM10000/images
+  retinal_oct:
+    root: ./data/raw/OCT2017
+model:
+  backbone: resnet18
+  feature_dim: 512
+  head: etf
+  pretrained: true
+nc_regularization:
+  collapse_weight: 0.01
+  enabled: true
+  etf_align_weight: 0.01
+nc_tracking:
+  enabled: true
+  every_n_epochs: 1
+prototype:
+  learnable: true
+  temperature: 0.07
+sampling:
+  progressive_warmup: 10
+  strategy: weighted
+seed: 7
+seeds:
+- 42
+- 123
+- 7
+sweep:
+  methods:
+  - baseline
+  - weighted_ce
+  - focal
+  - oversampling
+  - etf
+  - prototype
+system:
+  adaptive_memory: false
+  force_device: null
+tracking:
+  log_dir: ./logs
+  tensorboard: false
+training:
+  batch_size: 16
+  epochs: 50
+  loss: focal
+  lr: 0.01
+  lr_schedule: cosine
+  mixed_precision: auto
+  momentum: 0.9
+  num_workers: 2
+  optimizer: SGD
+  warmup_epochs: 3
+  weight_decay: 0.0001
+visualization:
+  max_embed_samples: 5000
+  pca_components: 50
+  save_embeddings: true
+  tsne_n_iter: 1000
+  tsne_perplexity: 30
+  umap_min_dist: 0.1
+  umap_n_neighbors: 15
